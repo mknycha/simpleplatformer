@@ -60,10 +60,15 @@ func main() {
 
 	renderer.SetDrawColor(uint8(66), uint8(135), uint8(245), uint8(0))
 
-	tex, err := img.LoadTexture(renderer, "assets/sheet_9.png")
+	texScene, err := img.LoadTexture(renderer, "assets/sheet_9.png")
 	if err != nil {
 		log.Fatal("could not load texture: %v", err)
 	}
+	// texCharacters, err := img.LoadTexture(renderer, "assets/characters_0.png")
+	// if err != nil {
+	// 	log.Fatal("could not load texture: %v", err)
+	// }
+
 	tileSourceHeight := int32(128 / 8)
 	tileSourceWidth := int32(16)
 	tileStartRect := &sdl.Rect{tileSourceWidth * 7, 0, tileSourceWidth, tileSourceHeight}
@@ -71,6 +76,9 @@ func main() {
 	tileEndRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth, tileSourceHeight}
 	tileDestHeight := int32((windowHeight / tileSourceHeight))
 	tileDestWidth := int32((windowWidth / tileSourceWidth))
+
+	platform1 := platform{0, 100, texScene, tileStartRect, tileMiddleRect, tileEndRect, 7}
+	platform2 := platform{200, 300, texScene, tileStartRect, tileMiddleRect, tileEndRect, 4}
 
 	running := true
 	for running {
@@ -84,18 +92,32 @@ func main() {
 			}
 		}
 		renderer.Clear()
-		renderer.Copy(tex, tileStartRect, &sdl.Rect{0, 100, tileDestWidth, tileDestHeight})
-		for i := 1; i < 7; i++ {
-			renderer.Copy(tex, tileMiddleRect, &sdl.Rect{int32(i) * tileDestWidth, 100, tileDestWidth, tileDestHeight})
-		}
-		renderer.Copy(tex, tileEndRect, &sdl.Rect{7 * tileDestWidth, 100, tileDestWidth, tileDestHeight})
+		platform1.draw(renderer, tileDestWidth, tileDestHeight)
+		platform2.draw(renderer, tileDestWidth, tileDestHeight)
 
 		renderer.Present()
 		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
-		// fmt.Println("ms per frame:", elapsedTime)
 		if elapsedTime < 5 {
 			sdl.Delay(5 - uint32(elapsedTime))
 			elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
 		}
 	}
+}
+
+type platform struct {
+	X                   int32
+	Y                   int32
+	Texture             *sdl.Texture
+	TileStartRect       *sdl.Rect
+	TileMiddleRect      *sdl.Rect
+	TileEndRect         *sdl.Rect
+	NumberOfMiddleTiles int
+}
+
+func (p *platform) draw(renderer *sdl.Renderer, tileDestWidth, tileDestHeight int32) {
+	renderer.Copy(p.Texture, p.TileStartRect, &sdl.Rect{p.X, p.Y, tileDestWidth, tileDestHeight})
+	for i := 1; i < p.NumberOfMiddleTiles; i++ {
+		renderer.Copy(p.Texture, p.TileMiddleRect, &sdl.Rect{int32(i)*tileDestWidth + p.X, p.Y, tileDestWidth, tileDestHeight})
+	}
+	renderer.Copy(p.Texture, p.TileEndRect, &sdl.Rect{int32(p.NumberOfMiddleTiles)*tileDestWidth + p.X, p.Y, tileDestWidth, tileDestHeight})
 }
