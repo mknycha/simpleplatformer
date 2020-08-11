@@ -1,6 +1,9 @@
 // TODO:
-// 1. Draw everything starting from center (X,Y should be center point)
-// 2. Fix collisions (note that character does not take the whole tile!)
+// 1. Fix collisions (note that character does not take the whole tile!)
+// 2. Render the lower part of the platform as well
+// 3. CLOSE ALL THE TEXTURES!
+// 4. What should be the character width?
+// 5. Reduce animation speed
 
 package main
 
@@ -14,33 +17,45 @@ import (
 )
 
 const (
-	windowWidth  = 1000
-	windowHeight = 800
+	windowWidth  = 900
+	windowHeight = 600
 	gravity      = 0.05
 )
 
-var tileDestWidth, tileDestHeight int32
+const (
+	scaleX                = windowWidth / 288
+	scaleY                = windowHeight / 172
+	tileSourceWidth       = int32(16)
+	tileSourceHeight      = int32(128 / 8)
+	tileDestWidth         = int32(tileSourceWidth * scaleX)
+	tileDestHeight        = int32(tileSourceHeight * scaleY)
+	characterSourceWidth  = int32(32)
+	characterSourceHeight = int32(32)
+	characterDestWidth    = int32(characterSourceWidth * scaleX)
+	characterDestHeight   = int32(characterSourceHeight * scaleY)
+)
 
 type platform struct {
-	X                   int32
-	Y                   int32
-	Texture             *sdl.Texture
-	TileStartRect       *sdl.Rect
-	TileMiddleRect      *sdl.Rect
-	TileEndRect         *sdl.Rect
-	NumberOfMiddleTiles int
-}
-
-func (p *platform) endX() int32 {
-	return int32(p.NumberOfMiddleTiles+1)*tileDestWidth + p.X
+	X       int32
+	Y       int32
+	W       int32
+	H       int32
+	Texture *sdl.Texture
 }
 
 func (p *platform) draw(renderer *sdl.Renderer) {
-	renderer.Copy(p.Texture, p.TileStartRect, &sdl.Rect{p.X, p.Y, tileDestWidth, tileDestHeight})
-	for i := 1; i < p.NumberOfMiddleTiles; i++ {
-		renderer.Copy(p.Texture, p.TileMiddleRect, &sdl.Rect{int32(i)*tileDestWidth + p.X, p.Y, tileDestWidth, tileDestHeight})
+	tileStartRect := &sdl.Rect{tileSourceWidth * 10, 0, tileSourceWidth, tileSourceHeight}
+	tileMiddleRect := &sdl.Rect{tileSourceWidth * 11, 0, tileSourceWidth, tileSourceHeight}
+	tileEndRect := &sdl.Rect{tileSourceWidth * 12, 0, tileSourceWidth, tileSourceHeight}
+	// First row
+	// First tile
+	renderer.Copy(p.Texture, tileStartRect, &sdl.Rect{p.X - p.W/2, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+	// Middle
+	for tempW := tileDestWidth; tempW < p.W-tileDestWidth; tempW += tileDestWidth {
+		renderer.Copy(p.Texture, tileMiddleRect, &sdl.Rect{p.X - p.W/2 + tempW, p.Y - p.H/2, tileDestWidth, tileDestHeight})
 	}
-	renderer.Copy(p.Texture, p.TileEndRect, &sdl.Rect{int32(p.NumberOfMiddleTiles)*tileDestWidth + p.X, p.Y, tileDestWidth, tileDestHeight})
+	// Last tile
+	renderer.Copy(p.Texture, tileEndRect, &sdl.Rect{p.X + p.W/2 - tileDestWidth, p.Y - p.H/2, tileDestWidth, tileDestHeight})
 }
 
 type character struct {
@@ -75,16 +90,14 @@ func (c *character) update(tileDestWidth int32, platforms []*platform) {
 	for _, p := range platforms {
 		// If character collides with a platform from above
 		// Right now it transports the character whenever he is under the platform
-		if c.Y+c.H >= p.Y && c.X >= p.X && c.X+(c.W/4) <= p.endX() {
-			c.Y = p.Y - c.H
+		if c.Y+c.H/2 >= p.Y-p.H && c.X >= p.X-p.W/2 && c.X <= p.X+p.W/2 {
+			c.Y = p.Y - p.H/2 - c.H
 			c.VY = 0
 		}
 	}
 }
 
 func (c *character) draw(renderer *sdl.Renderer) {
-	tileSrcWidth := int32(32)
-	tileSrcHeight := int32(32)
 	if c.Walking {
 		if c.DisplayedFrame > 4 {
 			c.DisplayedFrame = 0
@@ -94,8 +107,8 @@ func (c *character) draw(renderer *sdl.Renderer) {
 		c.DisplayedFrame = 0
 	}
 	// without +1 there appears a weird line above the character head
-	src := &sdl.Rect{int32(c.DisplayedFrame) * tileSrcWidth, tileSrcHeight + 1, tileSrcWidth, tileSrcHeight - 1}
-	dst := &sdl.Rect{c.X, c.Y, tileDestWidth, tileDestHeight}
+	src := &sdl.Rect{int32(c.DisplayedFrame) * characterSourceWidth, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1}
+	dst := &sdl.Rect{c.X - characterDestWidth/2, c.Y - characterDestHeight/2, characterDestWidth, characterDestHeight}
 	var flip sdl.RendererFlip
 	if c.FacedRight {
 		flip = sdl.FLIP_NONE
@@ -160,16 +173,8 @@ func main() {
 		log.Fatalf("could not load characters texture: %v", err)
 	}
 
-	tileSourceHeight := int32(128 / 8)
-	tileSourceWidth := int32(16)
-	tileStartRect := &sdl.Rect{tileSourceWidth * 7, 0, tileSourceWidth, tileSourceHeight}
-	tileMiddleRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight}
-	tileEndRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth, tileSourceHeight}
-	tileDestHeight = int32((windowHeight / tileSourceHeight))
-	tileDestWidth = int32((windowWidth / tileSourceWidth))
-
-	platform1 := platform{0, 200, texBackground, tileStartRect, tileMiddleRect, tileEndRect, 7}
-	platform2 := platform{300, 300, texBackground, tileStartRect, tileMiddleRect, tileEndRect, 4}
+	platform1 := platform{windowWidth / 2, windowHeight / 2, windowWidth, 50, texBackground}
+	platform2 := platform{windowWidth / 3, windowHeight / 3, windowWidth / 4, 50, texBackground}
 	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, false, true, 0}
 	platforms := []*platform{&platform1, &platform2}
 
@@ -179,6 +184,7 @@ func main() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.KeyboardEvent:
+				// TODO: Refactor
 				if sdl.K_RIGHT == e.Keysym.Sym {
 					if e.State == sdl.PRESSED {
 						player.VX = 1
