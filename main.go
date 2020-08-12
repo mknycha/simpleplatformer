@@ -1,9 +1,8 @@
 // TODO:
 // 1. Fix collisions (note that character does not take the whole tile!)
 // 2. Render the lower part of the platform as well
-// 3. CLOSE ALL THE TEXTURES!
-// 4. What should be the character width?
-// 5. Reduce animation speed
+// 3. What should be the character width?
+// 4. Reduce animation speed
 
 package main
 
@@ -49,13 +48,22 @@ func (p *platform) draw(renderer *sdl.Renderer) {
 	tileEndRect := &sdl.Rect{tileSourceWidth * 12, 0, tileSourceWidth, tileSourceHeight}
 	// First row
 	// First tile
-	renderer.Copy(p.Texture, tileStartRect, &sdl.Rect{p.X - p.W/2, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+	err := renderer.Copy(p.Texture, tileStartRect, &sdl.Rect{p.X - p.W/2, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+	if err != nil {
+		log.Fatalf("could not copy texture: %v", err)
+	}
 	// Middle
 	for tempW := tileDestWidth; tempW < p.W-tileDestWidth; tempW += tileDestWidth {
-		renderer.Copy(p.Texture, tileMiddleRect, &sdl.Rect{p.X - p.W/2 + tempW, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+		err = renderer.Copy(p.Texture, tileMiddleRect, &sdl.Rect{p.X - p.W/2 + tempW, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+		if err != nil {
+			log.Fatalf("could not copy texture: %v", err)
+		}
 	}
 	// Last tile
-	renderer.Copy(p.Texture, tileEndRect, &sdl.Rect{p.X + p.W/2 - tileDestWidth, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+	err = renderer.Copy(p.Texture, tileEndRect, &sdl.Rect{p.X + p.W/2 - tileDestWidth, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+	if err != nil {
+		log.Fatalf("could not copy texture: %v", err)
+	}
 }
 
 type character struct {
@@ -115,7 +123,10 @@ func (c *character) draw(renderer *sdl.Renderer) {
 	} else {
 		flip = sdl.FLIP_HORIZONTAL
 	}
-	renderer.CopyEx(c.Texture, src, dst, 0, nil, flip)
+	err := renderer.CopyEx(c.Texture, src, dst, 0, nil, flip)
+	if err != nil {
+		log.Fatalf("could not copy character texture: %v", err)
+	}
 }
 
 func main() {
@@ -168,10 +179,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not load background texture: %v", err)
 	}
+	defer texBackground.Destroy()
 	texCharacters, err := img.LoadTexture(renderer, "assets/characters.png")
 	if err != nil {
 		log.Fatalf("could not load characters texture: %v", err)
 	}
+	defer texCharacters.Destroy()
 
 	platform1 := platform{windowWidth / 2, windowHeight / 2, windowWidth, 50, texBackground}
 	platform2 := platform{windowWidth / 3, windowHeight / 3, windowWidth / 4, 50, texBackground}
