@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	windowWidth  = 900
-	windowHeight = 600
+	windowWidth  = 864
+	windowHeight = 516
 	gravity      = 0.05
 )
 
@@ -34,35 +34,47 @@ const (
 	characterDestHeight   = int32(characterSourceHeight * scaleY)
 )
 
+type platformRects struct {
+	topLeftRect   *sdl.Rect
+	topMiddleRect *sdl.Rect
+	topRightRect  *sdl.Rect
+	midLeftRect   *sdl.Rect
+	midMiddleRect *sdl.Rect
+	midRightRect  *sdl.Rect
+}
+
 type platform struct {
-	X       int32
-	Y       int32
-	W       int32
-	H       int32
-	Texture *sdl.Texture
+	x           int32
+	y           int32
+	w           int32
+	h           int32
+	texture     *sdl.Texture
+	sourceRects platformRects
 }
 
 func (p *platform) draw(renderer *sdl.Renderer) {
-	tileStartRect := &sdl.Rect{tileSourceWidth * 10, 0, tileSourceWidth, tileSourceHeight}
-	tileMiddleRect := &sdl.Rect{tileSourceWidth * 11, 0, tileSourceWidth, tileSourceHeight}
-	tileEndRect := &sdl.Rect{tileSourceWidth * 12, 0, tileSourceWidth, tileSourceHeight}
-	// First row
-	// First tile
-	err := renderer.Copy(p.Texture, tileStartRect, &sdl.Rect{p.X - p.W/2, p.Y - p.H/2, tileDestWidth, tileDestHeight})
-	if err != nil {
-		log.Fatalf("could not copy texture: %v", err)
+	// Top row
+	p.drawRow(renderer, p.sourceRects.topLeftRect, p.sourceRects.topMiddleRect, p.sourceRects.topRightRect, 0)
+	// Other rows
+	for y := tileDestHeight; y < p.h; y += tileDestHeight - 1 {
+		p.drawRow(renderer, p.sourceRects.midLeftRect, p.sourceRects.midMiddleRect, p.sourceRects.midRightRect, y)
 	}
-	// Middle
-	for tempW := tileDestWidth; tempW < p.W-tileDestWidth; tempW += tileDestWidth {
-		err = renderer.Copy(p.Texture, tileMiddleRect, &sdl.Rect{p.X - p.W/2 + tempW, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+}
+
+func (p *platform) drawRow(renderer *sdl.Renderer, tileLeftRect, tileMiddleRect, tileRightRect *sdl.Rect, y int32) {
+	err := renderer.Copy(p.texture, tileLeftRect, &sdl.Rect{p.x - p.w/2, p.y - p.h/2 + y, tileDestWidth, tileDestHeight})
+	if err != nil {
+		log.Fatalf("could not copy platform left texture: %v", err)
+	}
+	for x := tileDestWidth; x < p.w-tileDestWidth; x += tileDestWidth {
+		err = renderer.Copy(p.texture, tileMiddleRect, &sdl.Rect{p.x - p.w/2 + x, p.y - p.h/2 + y, tileDestWidth, tileDestHeight})
 		if err != nil {
-			log.Fatalf("could not copy texture: %v", err)
+			log.Fatalf("could not copy platform middle texture: %v", err)
 		}
 	}
-	// Last tile
-	err = renderer.Copy(p.Texture, tileEndRect, &sdl.Rect{p.X + p.W/2 - tileDestWidth, p.Y - p.H/2, tileDestWidth, tileDestHeight})
+	err = renderer.Copy(p.texture, tileRightRect, &sdl.Rect{p.x + p.w/2 - tileDestWidth, p.y - p.h/2 + y, tileDestWidth, tileDestHeight})
 	if err != nil {
-		log.Fatalf("could not copy texture: %v", err)
+		log.Fatalf("could not copy platform right texture: %v", err)
 	}
 }
 
@@ -98,8 +110,8 @@ func (c *character) update(tileDestWidth int32, platforms []*platform) {
 	for _, p := range platforms {
 		// If character collides with a platform from above
 		// Right now it transports the character whenever he is under the platform
-		if c.Y+c.H/2 >= p.Y-p.H && c.X >= p.X-p.W/2 && c.X <= p.X+p.W/2 {
-			c.Y = p.Y - p.H/2 - c.H
+		if c.Y+c.H/2 >= p.y-p.h && c.X >= p.x-p.w/2 && c.X <= p.x+p.w/2 {
+			c.Y = p.y - p.h/2 - c.H
 			c.VY = 0
 		}
 	}
@@ -186,8 +198,16 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
-	platform1 := platform{windowWidth / 2, windowHeight / 2, windowWidth, 50, texBackground}
-	platform2 := platform{windowWidth / 3, windowHeight / 3, windowWidth / 4, 50, texBackground}
+	walkablePlatformRects := platformRects{
+		topLeftRect:   &sdl.Rect{tileSourceWidth * 10, 0, tileSourceWidth, tileSourceHeight},
+		topMiddleRect: &sdl.Rect{tileSourceWidth * 11, 0, tileSourceWidth, tileSourceHeight},
+		topRightRect:  &sdl.Rect{tileSourceWidth * 12, 0, tileSourceWidth, tileSourceHeight},
+		midLeftRect:   &sdl.Rect{tileSourceWidth * 10, tileSourceHeight, tileSourceWidth, tileSourceHeight},
+		midMiddleRect: &sdl.Rect{tileSourceWidth * 11, tileSourceHeight, tileSourceWidth, tileSourceHeight},
+		midRightRect:  &sdl.Rect{tileSourceWidth * 12, tileSourceHeight, tileSourceWidth, tileSourceHeight},
+	}
+	platform2 := platform{windowWidth / 2, windowHeight * 0.75, windowWidth, windowHeight / 2, texBackground, walkablePlatformRects}
+	platform1 := platform{windowWidth / 3, windowHeight / 3, windowWidth / 4, windowHeight / 3, texBackground, walkablePlatformRects}
 	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, false, true, 0}
 	platforms := []*platform{&platform1, &platform2}
 
