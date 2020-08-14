@@ -43,6 +43,19 @@ type platformRects struct {
 	midRightRect  *sdl.Rect
 }
 
+type platformDecoration struct {
+	texture *sdl.Texture
+	srcRect *sdl.Rect
+	dstRect *sdl.Rect
+}
+
+func (pd *platformDecoration) draw(renderer *sdl.Renderer) {
+	err := renderer.Copy(pd.texture, pd.srcRect, pd.dstRect)
+	if err != nil {
+		log.Fatalf("could not copy platform decoration texture: %v", err)
+	}
+}
+
 type platform struct {
 	x           int32
 	y           int32
@@ -50,6 +63,28 @@ type platform struct {
 	h           int32
 	texture     *sdl.Texture
 	sourceRects platformRects
+	decorations []platformDecoration
+}
+
+func newPlatform(x, y, w, h int32, texture *sdl.Texture, sourceRects platformRects) (platform, error) {
+	if w < tileDestWidth*3 {
+		return platform{}, fmt.Errorf("width value: %v must be higher (at least %v)", w, tileDestWidth*3)
+	}
+	return platform{x, y, w, h, texture, sourceRects, []platformDecoration{}}, nil
+}
+
+// addDecoration adds a decoration tile from src of the platform texture to the position (relative to the platform)
+func (p *platform) addDecoration(srcRect *sdl.Rect, x, y int32) error {
+	if p.x-p.w/2+x+tileDestWidth > p.x+p.w/2 || p.x-p.w/2+x < p.x-p.w/2 {
+		return fmt.Errorf("invalid decoration position x: %v. Decoration width exceeds platform width (%v)", x, p.w)
+	}
+	if p.y-p.h/2+y+tileDestHeight > p.y+p.h/2 || p.y-p.h/2+y < p.y-p.h/2 {
+		return fmt.Errorf("invalid decoration position y: %v. Decoration height exceeds platform height (%v)", y, p.h)
+	}
+	dstRect := &sdl.Rect{p.x - p.w/2 + x, p.y - p.h/2 + y, tileDestWidth, tileDestHeight}
+	pd := platformDecoration{p.texture, srcRect, dstRect}
+	p.decorations = append(p.decorations, pd)
+	return nil
 }
 
 func (p *platform) draw(renderer *sdl.Renderer) {
@@ -58,6 +93,9 @@ func (p *platform) draw(renderer *sdl.Renderer) {
 	// Other rows
 	for y := tileDestHeight; y < p.h; y += tileDestHeight - 1 {
 		p.drawRow(renderer, p.sourceRects.midLeftRect, p.sourceRects.midMiddleRect, p.sourceRects.midRightRect, y)
+	}
+	for _, pd := range p.decorations {
+		pd.draw(renderer)
 	}
 }
 
@@ -206,8 +244,52 @@ func main() {
 		midMiddleRect: &sdl.Rect{tileSourceWidth * 11, tileSourceHeight, tileSourceWidth, tileSourceHeight},
 		midRightRect:  &sdl.Rect{tileSourceWidth * 12, tileSourceHeight, tileSourceWidth, tileSourceHeight},
 	}
-	platform2 := platform{windowWidth / 2, windowHeight * 0.75, windowWidth, windowHeight / 2, texBackground, walkablePlatformRects}
-	platform1 := platform{windowWidth / 3, windowHeight / 3, windowWidth / 4, windowHeight / 3, texBackground, walkablePlatformRects}
+	topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
+	topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
+	topRightDecorationRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth - 1, tileSourceHeight - 1}
+	midMiddleDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, tileDestHeight, tileSourceWidth - 2, tileSourceHeight - 1}
+
+	platform1, err := newPlatform(windowWidth/3, windowHeight/3, windowWidth/4, windowHeight/3, texBackground, walkablePlatformRects)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
+	}
+	platform2, err := newPlatform(windowWidth/2, windowHeight*0.75, windowWidth, windowHeight/2, texBackground, walkablePlatformRects)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
+	}
+	msg := "could not add decoration to platform2: %v"
+	err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*2, 0)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*3, 0)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*4, 0)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*10, 0)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*11, 0)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*12, 0)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*3, tileDestHeight)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
+	err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*7, tileDestHeight*2)
+	if err != nil {
+		log.Fatalf(msg, err)
+	}
 	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, false, true, 0}
 	platforms := []*platform{&platform1, &platform2}
 
@@ -242,8 +324,9 @@ func main() {
 
 		renderer.Clear()
 
-		platform1.draw(renderer)
-		platform2.draw(renderer)
+		for _, p := range platforms {
+			p.draw(renderer)
+		}
 		player.draw(renderer)
 
 		renderer.Present()
