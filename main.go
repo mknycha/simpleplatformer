@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	windowWidth  = 864
-	windowHeight = 516
+	windowWidth  = 860
+	windowHeight = 510
 	gravity      = 0.05
 )
 
@@ -148,7 +148,7 @@ func (c *character) update(tileDestWidth int32, platforms []*platform) {
 	for _, p := range platforms {
 		// If character collides with a platform from above
 		// Right now it transports the character whenever he is under the platform
-		if c.Y+c.H/2 >= p.y-p.h && c.X >= p.x-p.w/2 && c.X <= p.x+p.w/2 {
+		if c.Y+c.H >= p.y-p.h/2 && c.X >= p.x-p.w/2 && c.X <= p.x+p.w/2 {
 			c.Y = p.y - p.h/2 - c.H
 			c.VY = 0
 		}
@@ -244,52 +244,53 @@ func main() {
 		midMiddleRect: &sdl.Rect{tileSourceWidth * 11, tileSourceHeight, tileSourceWidth, tileSourceHeight},
 		midRightRect:  &sdl.Rect{tileSourceWidth * 12, tileSourceHeight, tileSourceWidth, tileSourceHeight},
 	}
-	topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
-	topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
-	topRightDecorationRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth - 1, tileSourceHeight - 1}
-	midMiddleDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, tileDestHeight, tileSourceWidth - 2, tileSourceHeight - 1}
+	// topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
+	// topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
+	// topRightDecorationRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth - 1, tileSourceHeight - 1}
+	// midMiddleDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, tileDestHeight, tileSourceWidth - 2, tileSourceHeight - 1}
 
-	platform1, err := newPlatform(windowWidth/3, windowHeight/3, windowWidth/4, windowHeight/3, texBackground, walkablePlatformRects)
+	platform1, err := newPlatform(windowWidth/3, windowHeight*0.7, windowWidth/4, windowHeight*0.5, texBackground, walkablePlatformRects)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
-	platform2, err := newPlatform(windowWidth/2, windowHeight*0.75, windowWidth, windowHeight/2, texBackground, walkablePlatformRects)
+	platform2, err := newPlatform(windowWidth*0.1, windowHeight*0.9, windowWidth*0.25, windowHeight*0.5, texBackground, walkablePlatformRects)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
-	msg := "could not add decoration to platform2: %v"
-	err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*2, 0)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*3, 0)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*4, 0)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*10, 0)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*11, 0)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*12, 0)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*3, tileDestHeight)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
-	err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*7, tileDestHeight*2)
-	if err != nil {
-		log.Fatalf(msg, err)
-	}
+	// msg := "could not add decoration to platform2: %v"
+	// err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*2, 0)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*3, 0)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*4, 0)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*10, 0)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*11, 0)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*12, 0)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*3, tileDestHeight)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*7, tileDestHeight*2)
+	// if err != nil {
+	// 	log.Fatalf(msg, err)
+	// }
+	// characterHeight := int32(float32(tileDestHeight) * 0.75) // Temporary hack
 	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, false, true, 0}
 	platforms := []*platform{&platform1, &platform2}
 
