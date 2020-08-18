@@ -19,6 +19,7 @@ const (
 	windowWidth  = 860
 	windowHeight = 510
 	gravity      = 0.05
+	jumpSpeed    = 4
 )
 
 const (
@@ -118,38 +119,41 @@ func (p *platform) drawRow(renderer *sdl.Renderer, tileLeftRect, tileMiddleRect,
 
 type characterState int
 
-const (
-	walking characterState = iota
-	standing
-)
-
 type character struct {
-	x                      int32
-	y                      int32
-	w                      int32
-	h                      int32
-	vy                     float32
-	vx                     float32
-	texture                *sdl.Texture
-	time                   int
-	facedRight             bool
-	state                  characterState
-	walkingAnimationRects  []*sdl.Rect
-	standingAnimationRects []*sdl.Rect
+	x                           int32
+	y                           int32
+	w                           int32
+	h                           int32
+	vy                          float32
+	vx                          float32
+	texture                     *sdl.Texture
+	time                        int
+	facedRight                  bool
+	currentAnimation            []*sdl.Rect
+	walkingAnimationRects       []*sdl.Rect
+	standingAnimationRects      []*sdl.Rect
+	jumpingUpwardAnimationRects []*sdl.Rect
+	fallingAnimationRects       []*sdl.Rect
 }
 
 func (c *character) update(tileDestWidth int32, platforms []*platform) {
 	c.x += int32(c.vx)
 	c.y += int32(c.vy)
-	c.vy += gravity
-	if c.vx != 0 && c.vy == gravity {
+	if c.vx != 0 && c.vy == 0 {
 		c.time++
-		c.state = walking
-	} else {
-		// character is falling
+		c.currentAnimation = c.walkingAnimationRects
+	} else if c.vy < 0 { // jumping, going upward
 		c.time = 0
-		c.state = standing
+		c.currentAnimation = c.jumpingUpwardAnimationRects
+	} else if c.vy > 0 { // falling down
+		c.time = 0
+		c.currentAnimation = c.fallingAnimationRects
+	} else {
+		// character is standing
+		c.time = 0
+		c.currentAnimation = c.standingAnimationRects
 	}
+	c.vy += gravity
 	for _, p := range platforms {
 		// If character collides with a platform from above
 		// Right now it transports the character whenever he is under the platform
@@ -169,15 +173,15 @@ func (c *character) move(right bool) {
 	c.facedRight = right
 }
 
-func (c *character) draw(renderer *sdl.Renderer) {
-	var animationRects []*sdl.Rect
-	if c.state == walking {
-		animationRects = c.walkingAnimationRects
-	} else if c.state == standing {
-		animationRects = c.standingAnimationRects
+func (c *character) jump() {
+	if c.vy == 0 {
+		c.vy = -jumpSpeed
 	}
-	displayedFrame := c.time / 10 % len(animationRects)
-	src := animationRects[displayedFrame]
+}
+
+func (c *character) draw(renderer *sdl.Renderer) {
+	displayedFrame := c.time / 10 % len(c.currentAnimation)
+	src := c.currentAnimation[displayedFrame]
 	dst := &sdl.Rect{c.x - characterDestWidth/2, c.y - characterDestHeight/2, characterDestWidth, characterDestHeight}
 	var flip sdl.RendererFlip
 	if c.facedRight {
@@ -313,7 +317,13 @@ func main() {
 		{characterSourceWidth * 3, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
 		{characterSourceWidth * 4, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
 	}
-	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, 0, true, standing, walkingPlayerRects, standingPlayerRects}
+	jumpingUpwardPlayerRects := []*sdl.Rect{
+		{characterSourceWidth * 6, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+	}
+	fallingPlayerRects := []*sdl.Rect{
+		{characterSourceWidth * 7, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+	}
+	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, 0, true, standingPlayerRects, walkingPlayerRects, standingPlayerRects, jumpingUpwardPlayerRects, fallingPlayerRects}
 	platforms := []*platform{&platform1, &platform2}
 
 	running := true
@@ -322,12 +332,22 @@ func main() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.KeyboardEvent:
-				player.vx = 0
-				if sdl.K_RIGHT == e.Keysym.Sym && e.State == sdl.PRESSED {
-					player.move(true)
+				if sdl.K_RIGHT == e.Keysym.Sym {
+					if e.State == sdl.PRESSED {
+						player.move(true)
+					} else {
+						player.vx = 0
+					}
 				}
-				if sdl.K_LEFT == e.Keysym.Sym && e.State == sdl.PRESSED {
-					player.move(false)
+				if sdl.K_LEFT == e.Keysym.Sym {
+					if e.State == sdl.PRESSED {
+						player.move(false)
+					} else {
+						player.vx = 0
+					}
+				}
+				if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
+					player.jump()
 				}
 			case *sdl.QuitEvent:
 				println("Quit")
