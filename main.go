@@ -116,64 +116,76 @@ func (p *platform) drawRow(renderer *sdl.Renderer, tileLeftRect, tileMiddleRect,
 	}
 }
 
+type characterState int
+
+const (
+	walking characterState = iota
+	standing
+)
+
 type character struct {
-	X              int32
-	Y              int32
-	W              int32
-	H              int32
-	VY             float32
-	VX             float32
-	Texture        *sdl.Texture
-	Walking        bool // Should I change it to enumerable state?
-	FacedRight     bool
-	DisplayedFrame int
+	x                      int32
+	y                      int32
+	w                      int32
+	h                      int32
+	vy                     float32
+	vx                     float32
+	texture                *sdl.Texture
+	time                   int
+	facedRight             bool
+	state                  characterState
+	walkingAnimationRects  []*sdl.Rect
+	standingAnimationRects []*sdl.Rect
 }
 
 func (c *character) update(tileDestWidth int32, platforms []*platform) {
-	c.X += int32(c.VX)
-	c.Y += int32(c.VY)
-	c.VY += gravity
-	if c.VX > 0 {
-		c.FacedRight = true
-	}
-	if c.VX < 0 {
-		c.FacedRight = false
-	}
-	// Walking animation
-	if c.VX != 0 && c.VY == gravity {
-		c.Walking = true
+	c.x += int32(c.vx)
+	c.y += int32(c.vy)
+	c.vy += gravity
+	if c.vx != 0 && c.vy == gravity {
+		c.time++
+		c.state = walking
 	} else {
-		c.Walking = false
+		// character is falling
+		c.time = 0
+		c.state = standing
 	}
 	for _, p := range platforms {
 		// If character collides with a platform from above
 		// Right now it transports the character whenever he is under the platform
-		if c.Y+c.H >= p.y-p.h/2 && c.X >= p.x-p.w/2 && c.X <= p.x+p.w/2 {
-			c.Y = p.y - p.h/2 - c.H
-			c.VY = 0
+		if c.y+c.h >= p.y-p.h/2 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2 {
+			c.y = p.y - p.h/2 - c.h
+			c.vy = 0
 		}
 	}
 }
 
-func (c *character) draw(renderer *sdl.Renderer) {
-	if c.Walking {
-		if c.DisplayedFrame > 4 {
-			c.DisplayedFrame = 0
-		}
-		c.DisplayedFrame++
+func (c *character) move(right bool) {
+	if right {
+		c.vx = 1
 	} else {
-		c.DisplayedFrame = 0
+		c.vx = -1
 	}
-	// without +1 there appears a weird line above the character head
-	src := &sdl.Rect{int32(c.DisplayedFrame) * characterSourceWidth, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1}
-	dst := &sdl.Rect{c.X - characterDestWidth/2, c.Y - characterDestHeight/2, characterDestWidth, characterDestHeight}
+	c.facedRight = right
+}
+
+func (c *character) draw(renderer *sdl.Renderer) {
+	var animationRects []*sdl.Rect
+	if c.state == walking {
+		animationRects = c.walkingAnimationRects
+	} else if c.state == standing {
+		animationRects = c.standingAnimationRects
+	}
+	displayedFrame := c.time / 10 % len(animationRects)
+	src := animationRects[displayedFrame]
+	dst := &sdl.Rect{c.x - characterDestWidth/2, c.y - characterDestHeight/2, characterDestWidth, characterDestHeight}
 	var flip sdl.RendererFlip
-	if c.FacedRight {
+	if c.facedRight {
 		flip = sdl.FLIP_NONE
 	} else {
 		flip = sdl.FLIP_HORIZONTAL
 	}
-	err := renderer.CopyEx(c.Texture, src, dst, 0, nil, flip)
+	err := renderer.CopyEx(c.texture, src, dst, 0, nil, flip)
 	if err != nil {
 		log.Fatalf("could not copy character texture: %v", err)
 	}
@@ -290,8 +302,18 @@ func main() {
 	// if err != nil {
 	// 	log.Fatalf(msg, err)
 	// }
-	// characterHeight := int32(float32(tileDestHeight) * 0.75) // Temporary hack
-	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, false, true, 0}
+
+	// without +1 there appears a weird line above the character head
+	standingPlayerRects := []*sdl.Rect{
+		{0, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+	}
+	walkingPlayerRects := []*sdl.Rect{
+		{characterSourceWidth, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+		{characterSourceWidth * 2, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+		{characterSourceWidth * 3, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+		{characterSourceWidth * 4, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
+	}
+	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, 0, true, standing, walkingPlayerRects, standingPlayerRects}
 	platforms := []*platform{&platform1, &platform2}
 
 	running := true
@@ -300,20 +322,12 @@ func main() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.KeyboardEvent:
-				// TODO: Refactor
-				if sdl.K_RIGHT == e.Keysym.Sym {
-					if e.State == sdl.PRESSED {
-						player.VX = 1
-					} else {
-						player.VX = 0
-					}
+				player.vx = 0
+				if sdl.K_RIGHT == e.Keysym.Sym && e.State == sdl.PRESSED {
+					player.move(true)
 				}
-				if sdl.K_LEFT == e.Keysym.Sym {
-					if e.State == sdl.PRESSED {
-						player.VX = -1
-					} else {
-						player.VX = 0
-					}
+				if sdl.K_LEFT == e.Keysym.Sym && e.State == sdl.PRESSED {
+					player.move(false)
 				}
 			case *sdl.QuitEvent:
 				println("Quit")
