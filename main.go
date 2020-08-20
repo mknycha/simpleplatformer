@@ -1,8 +1,10 @@
 // TODO:
-// 1. Fix collisions (note that character does not take the whole tile!)
-// 2. Render the lower part of the platform as well
-// 3. What should be the character width?
-// 4. Reduce animation speed
+// - There could be a struct for a set of animations
+// - Check the naming for animation rects
+// - Instead of character state - there could be a function, telling if character is e.g. falling
+// - Start game state, and game over state
+// - Fix collisions (note that character does not take the whole tile!)
+// - What should be the character width?
 
 package main
 
@@ -156,10 +158,12 @@ func (c *character) update(tileDestWidth int32, platforms []*platform) {
 	c.vy += gravity
 	for _, p := range platforms {
 		// If character collides with a platform from above
-		// Right now it transports the character whenever he is under the platform
-		if c.y+c.h >= p.y-p.h/2 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2 {
-			c.y = p.y - p.h/2 - c.h
-			c.vy = 0
+		if c.y+c.h >= p.y-p.h/2 && c.y+c.h <= p.y-p.h/2+5 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2 {
+			// If character is standing or falling down
+			if c.vy >= 0 {
+				c.y = p.y - p.h/2 - c.h
+				c.vy = 0
+			}
 		}
 	}
 }
