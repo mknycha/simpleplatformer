@@ -1,8 +1,7 @@
 // TODO:
-// - There could be a struct for a set of animations
-// - Check the naming for animation rects
-// - Instead of character state - there could be a function, telling if character is e.g. falling
+// - create a level struct to encapsulate platforms,
 // - Start game state, and game over state
+// - Handle player's death
 // - Fix collisions (note that character does not take the whole tile!)
 // - What should be the character width?
 
@@ -37,167 +36,7 @@ const (
 	characterDestHeight   = int32(characterSourceHeight * scaleY)
 )
 
-type platformRects struct {
-	topLeftRect   *sdl.Rect
-	topMiddleRect *sdl.Rect
-	topRightRect  *sdl.Rect
-	midLeftRect   *sdl.Rect
-	midMiddleRect *sdl.Rect
-	midRightRect  *sdl.Rect
-}
-
-type platformDecoration struct {
-	texture *sdl.Texture
-	srcRect *sdl.Rect
-	dstRect *sdl.Rect
-}
-
-func (pd *platformDecoration) draw(renderer *sdl.Renderer) {
-	err := renderer.Copy(pd.texture, pd.srcRect, pd.dstRect)
-	if err != nil {
-		log.Fatalf("could not copy platform decoration texture: %v", err)
-	}
-}
-
-type platform struct {
-	x           int32
-	y           int32
-	w           int32
-	h           int32
-	texture     *sdl.Texture
-	sourceRects platformRects
-	decorations []platformDecoration
-}
-
-func newPlatform(x, y, w, h int32, texture *sdl.Texture, sourceRects platformRects) (platform, error) {
-	if w < tileDestWidth*3 {
-		return platform{}, fmt.Errorf("width value: %v must be higher (at least %v)", w, tileDestWidth*3)
-	}
-	return platform{x, y, w, h, texture, sourceRects, []platformDecoration{}}, nil
-}
-
-// addDecoration adds a decoration tile from src of the platform texture to the position (relative to the platform)
-func (p *platform) addDecoration(srcRect *sdl.Rect, x, y int32) error {
-	if p.x-p.w/2+x+tileDestWidth > p.x+p.w/2 || p.x-p.w/2+x < p.x-p.w/2 {
-		return fmt.Errorf("invalid decoration position x: %v. Decoration width exceeds platform width (%v)", x, p.w)
-	}
-	if p.y-p.h/2+y+tileDestHeight > p.y+p.h/2 || p.y-p.h/2+y < p.y-p.h/2 {
-		return fmt.Errorf("invalid decoration position y: %v. Decoration height exceeds platform height (%v)", y, p.h)
-	}
-	dstRect := &sdl.Rect{p.x - p.w/2 + x, p.y - p.h/2 + y, tileDestWidth, tileDestHeight}
-	pd := platformDecoration{p.texture, srcRect, dstRect}
-	p.decorations = append(p.decorations, pd)
-	return nil
-}
-
-func (p *platform) draw(renderer *sdl.Renderer) {
-	// Top row
-	p.drawRow(renderer, p.sourceRects.topLeftRect, p.sourceRects.topMiddleRect, p.sourceRects.topRightRect, 0)
-	// Other rows
-	for y := tileDestHeight; y < p.h; y += tileDestHeight - 1 {
-		p.drawRow(renderer, p.sourceRects.midLeftRect, p.sourceRects.midMiddleRect, p.sourceRects.midRightRect, y)
-	}
-	for _, pd := range p.decorations {
-		pd.draw(renderer)
-	}
-}
-
-func (p *platform) drawRow(renderer *sdl.Renderer, tileLeftRect, tileMiddleRect, tileRightRect *sdl.Rect, y int32) {
-	err := renderer.Copy(p.texture, tileLeftRect, &sdl.Rect{p.x - p.w/2, p.y - p.h/2 + y, tileDestWidth, tileDestHeight})
-	if err != nil {
-		log.Fatalf("could not copy platform left texture: %v", err)
-	}
-	for x := tileDestWidth; x < p.w-tileDestWidth; x += tileDestWidth {
-		err = renderer.Copy(p.texture, tileMiddleRect, &sdl.Rect{p.x - p.w/2 + x, p.y - p.h/2 + y, tileDestWidth, tileDestHeight})
-		if err != nil {
-			log.Fatalf("could not copy platform middle texture: %v", err)
-		}
-	}
-	err = renderer.Copy(p.texture, tileRightRect, &sdl.Rect{p.x + p.w/2 - tileDestWidth, p.y - p.h/2 + y, tileDestWidth, tileDestHeight})
-	if err != nil {
-		log.Fatalf("could not copy platform right texture: %v", err)
-	}
-}
-
-type characterState int
-
-type character struct {
-	x                           int32
-	y                           int32
-	w                           int32
-	h                           int32
-	vy                          float32
-	vx                          float32
-	texture                     *sdl.Texture
-	time                        int
-	facedRight                  bool
-	currentAnimation            []*sdl.Rect
-	walkingAnimationRects       []*sdl.Rect
-	standingAnimationRects      []*sdl.Rect
-	jumpingUpwardAnimationRects []*sdl.Rect
-	fallingAnimationRects       []*sdl.Rect
-}
-
-func (c *character) update(tileDestWidth int32, platforms []*platform) {
-	c.x += int32(c.vx)
-	c.y += int32(c.vy)
-	if c.vx != 0 && c.vy == 0 {
-		c.time++
-		c.currentAnimation = c.walkingAnimationRects
-	} else if c.vy < 0 { // jumping, going upward
-		c.time = 0
-		c.currentAnimation = c.jumpingUpwardAnimationRects
-	} else if c.vy > 0 { // falling down
-		c.time = 0
-		c.currentAnimation = c.fallingAnimationRects
-	} else {
-		// character is standing
-		c.time = 0
-		c.currentAnimation = c.standingAnimationRects
-	}
-	c.vy += gravity
-	for _, p := range platforms {
-		// If character collides with a platform from above
-		if c.y+c.h >= p.y-p.h/2 && c.y+c.h <= p.y-p.h/2+5 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2 {
-			// If character is standing or falling down
-			if c.vy >= 0 {
-				c.y = p.y - p.h/2 - c.h
-				c.vy = 0
-			}
-		}
-	}
-}
-
-func (c *character) move(right bool) {
-	if right {
-		c.vx = 1
-	} else {
-		c.vx = -1
-	}
-	c.facedRight = right
-}
-
-func (c *character) jump() {
-	if c.vy == 0 {
-		c.vy = -jumpSpeed
-	}
-}
-
-func (c *character) draw(renderer *sdl.Renderer) {
-	displayedFrame := c.time / 10 % len(c.currentAnimation)
-	src := c.currentAnimation[displayedFrame]
-	dst := &sdl.Rect{c.x - characterDestWidth/2, c.y - characterDestHeight/2, characterDestWidth, characterDestHeight}
-	var flip sdl.RendererFlip
-	if c.facedRight {
-		flip = sdl.FLIP_NONE
-	} else {
-		flip = sdl.FLIP_HORIZONTAL
-	}
-	err := renderer.CopyEx(c.texture, src, dst, 0, nil, flip)
-	if err != nil {
-		log.Fatalf("could not copy character texture: %v", err)
-	}
-}
+type relativeRectPosition struct{ xIndex, yIndex int }
 
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
@@ -257,12 +96,12 @@ func main() {
 	defer texCharacters.Destroy()
 
 	walkablePlatformRects := platformRects{
-		topLeftRect:   &sdl.Rect{tileSourceWidth * 10, 0, tileSourceWidth, tileSourceHeight},
-		topMiddleRect: &sdl.Rect{tileSourceWidth * 11, 0, tileSourceWidth, tileSourceHeight},
-		topRightRect:  &sdl.Rect{tileSourceWidth * 12, 0, tileSourceWidth, tileSourceHeight},
-		midLeftRect:   &sdl.Rect{tileSourceWidth * 10, tileSourceHeight, tileSourceWidth, tileSourceHeight},
-		midMiddleRect: &sdl.Rect{tileSourceWidth * 11, tileSourceHeight, tileSourceWidth, tileSourceHeight},
-		midRightRect:  &sdl.Rect{tileSourceWidth * 12, tileSourceHeight, tileSourceWidth, tileSourceHeight},
+		topLeftRect:   newPlatformRect(relativeRectPosition{10, 0}),
+		topMiddleRect: newPlatformRect(relativeRectPosition{11, 0}),
+		topRightRect:  newPlatformRect(relativeRectPosition{12, 0}),
+		midLeftRect:   newPlatformRect(relativeRectPosition{10, 1}),
+		midMiddleRect: newPlatformRect(relativeRectPosition{11, 1}),
+		midRightRect:  newPlatformRect(relativeRectPosition{12, 1}),
 	}
 	// topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
 	// topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
@@ -311,23 +150,7 @@ func main() {
 	// 	log.Fatalf(msg, err)
 	// }
 
-	// without +1 there appears a weird line above the character head
-	standingPlayerRects := []*sdl.Rect{
-		{0, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-	}
-	walkingPlayerRects := []*sdl.Rect{
-		{characterSourceWidth, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-		{characterSourceWidth * 2, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-		{characterSourceWidth * 3, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-		{characterSourceWidth * 4, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-	}
-	jumpingUpwardPlayerRects := []*sdl.Rect{
-		{characterSourceWidth * 6, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-	}
-	fallingPlayerRects := []*sdl.Rect{
-		{characterSourceWidth * 7, characterSourceHeight + 1, characterSourceWidth, characterSourceHeight - 1},
-	}
-	player := character{0, 0, tileDestWidth, tileDestHeight, 0, 0, texCharacters, 0, true, standingPlayerRects, walkingPlayerRects, standingPlayerRects, jumpingUpwardPlayerRects, fallingPlayerRects}
+	player := newCharacter(0, 0, tileDestWidth, tileDestHeight, texCharacters)
 	platforms := []*platform{&platform1, &platform2}
 
 	running := true
