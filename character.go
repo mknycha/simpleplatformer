@@ -22,28 +22,169 @@ func newCharacterAnimationRects(positions []relativeRectPosition) []*sdl.Rect {
 	return arr
 }
 
-type animationsRectsSet struct {
-	standingAnimationRects      []*sdl.Rect
-	walkingAnimationRects       []*sdl.Rect
-	jumpingUpwardAnimationRects []*sdl.Rect
-	fallingAnimationRects       []*sdl.Rect
+type characterState interface {
+	move(bool)
+	jump()
+	update()
+	getAnimationRects() []*sdl.Rect
+}
+
+type standingState struct {
+	character      *character
+	animationRects []*sdl.Rect
+}
+
+func (s *standingState) move(right bool) {
+	c := s.character
+	if right {
+		c.vx = 1
+	} else {
+		c.vx = -1
+	}
+	c.facedRight = right
+	c.setState(c.walking)
+}
+
+func (s *standingState) jump() {
+	s.character.vy = -jumpSpeed
+	s.character.setState(s.character.jumping)
+}
+
+func (s *standingState) update() {
+	s.character.time = 0
+}
+
+func (s *standingState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
+}
+
+type walkingState struct {
+	character      *character
+	animationRects []*sdl.Rect
+}
+
+func (s *walkingState) move(right bool) {
+	if right {
+		s.character.vx = 1
+	} else {
+		s.character.vx = -1
+	}
+	s.character.facedRight = right
+}
+
+func (s *walkingState) jump() {
+	c := s.character
+	c.vy = -jumpSpeed
+	c.setState(c.jumping)
+}
+
+func (s *walkingState) update() {
+	c := s.character
+	c.time++
+	for _, p := range platforms {
+		// If character collides with ANY platform from above
+		if c.isTouchingFromAbove(p) {
+			if c.vx == 0 {
+				c.setState(c.standing)
+			}
+			return
+		}
+	}
+	c.setState(c.falling)
+}
+
+func (s *walkingState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
+}
+
+type jumpingState struct {
+	character      *character
+	animationRects []*sdl.Rect
+}
+
+func (s *jumpingState) move(right bool) {
+	if right {
+		s.character.vx = 1
+	} else {
+		s.character.vx = -1
+	}
+	s.character.facedRight = right
+}
+
+func (s *jumpingState) jump() {}
+
+func (s *jumpingState) update() {
+	s.character.time = 0
+	s.character.vy += gravity
+	if s.character.isFalling() {
+		s.character.setState(s.character.falling)
+	}
+}
+
+func (s *jumpingState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
+}
+
+type fallingState struct {
+	character      *character
+	animationRects []*sdl.Rect
+}
+
+func (s *fallingState) move(right bool) {
+	if right {
+		s.character.vx = 1
+	} else {
+		s.character.vx = -1
+	}
+	s.character.facedRight = right
+}
+
+func (s *fallingState) jump() {}
+
+func (s *fallingState) update() {
+	c := s.character
+	c.time = 0
+	c.vy += gravity
+	for _, p := range platforms {
+		if c.isTouchingFromAbove(p) {
+			c.y = p.y - p.h/2 - c.h
+			c.vy = 0
+			if c.vx == 0 {
+				c.setState(c.standing)
+			} else {
+				c.setState(c.walking)
+			}
+		}
+	}
+}
+
+func (s *fallingState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
 }
 
 type character struct {
-	x       int32
-	y       int32
-	w       int32
-	h       int32
-	vy      float32
-	vx      float32
-	texture *sdl.Texture
-	animationsRectsSet
-	time                  int
-	facedRight            bool
-	currentAnimationRects []*sdl.Rect
+	x            int32
+	y            int32
+	w            int32
+	h            int32
+	vy           float32
+	vx           float32
+	texture      *sdl.Texture
+	time         int
+	facedRight   bool
+	currentState characterState
+
+	standing characterState
+	walking  characterState
+	jumping  characterState
+	falling  characterState
 }
 
-func newCharacter(x, y, w, h int32, texture *sdl.Texture) character {
+func (c *character) setState(s characterState) {
+	c.currentState = s
+}
+
+func newCharacter(x, y, w, h int32, texture *sdl.Texture) *character {
 	standingPlayerRects := newCharacterAnimationRects([]relativeRectPosition{{0, 1}})
 	walkingPlayerRects := newCharacterAnimationRects([]relativeRectPosition{
 		{1, 1},
@@ -53,47 +194,50 @@ func newCharacter(x, y, w, h int32, texture *sdl.Texture) character {
 	})
 	jumpingUpwardPlayerRects := newCharacterAnimationRects([]relativeRectPosition{{6, 1}})
 	fallingPlayerRects := newCharacterAnimationRects([]relativeRectPosition{{7, 1}})
-	animations := animationsRectsSet{
-		standingAnimationRects:      standingPlayerRects,
-		walkingAnimationRects:       walkingPlayerRects,
-		jumpingUpwardAnimationRects: jumpingUpwardPlayerRects,
-		fallingAnimationRects:       fallingPlayerRects,
+
+	c := character{
+		x:          x,
+		y:          y,
+		w:          w,
+		h:          h,
+		vx:         0,
+		vy:         0,
+		texture:    texture,
+		time:       0,
+		facedRight: true,
 	}
-	return character{x, y, w, h, 0, 0, texture, animations, 0, true, animations.standingAnimationRects}
+	standingPlayerState := standingState{
+		character:      &c,
+		animationRects: standingPlayerRects,
+	}
+	walkingPlayerState := walkingState{
+		character:      &c,
+		animationRects: walkingPlayerRects,
+	}
+	jumpingPlayerState := jumpingState{
+		character:      &c,
+		animationRects: jumpingUpwardPlayerRects,
+	}
+	fallingPlayerState := fallingState{
+		character:      &c,
+		animationRects: fallingPlayerRects,
+	}
+	c.standing = &standingPlayerState
+	c.walking = &walkingPlayerState
+	c.jumping = &jumpingPlayerState
+	c.falling = &fallingPlayerState
+	c.setState(c.falling)
+	return &c
 }
 
 func (c *character) update(tileDestWidth int32, platforms []*platform) {
 	c.x += int32(c.vx)
 	c.y += int32(c.vy)
-	if c.isWalking() {
-		c.time++
-		c.currentAnimationRects = c.walkingAnimationRects
-	} else if c.isJumpingUpward() {
-		c.time = 0
-		c.currentAnimationRects = c.jumpingUpwardAnimationRects
-	} else if c.isFalling() {
-		c.time = 0
-		c.currentAnimationRects = c.fallingAnimationRects
-	} else {
-		// character is standing
-		c.time = 0
-		c.currentAnimationRects = c.standingAnimationRects
-	}
-	c.vy += gravity
-	for _, p := range platforms {
-		// If character collides with a platform from above
-		if c.y+c.h >= p.y-p.h/2 && c.y+c.h <= p.y-p.h/2+5 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2 {
-			// If character is standing or falling down
-			if c.vy >= 0 {
-				c.y = p.y - p.h/2 - c.h
-				c.vy = 0
-			}
-		}
-	}
+	c.currentState.update()
 }
 
-func (c *character) isWalking() bool {
-	return c.vx != 0 && c.vy == 0
+func (c *character) isTouchingFromAbove(p *platform) bool {
+	return c.y+c.h >= p.y-p.h/2 && c.y+c.h <= p.y-p.h/2+5 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2
 }
 
 func (c *character) isFalling() bool {
@@ -105,23 +249,17 @@ func (c *character) isJumpingUpward() bool {
 }
 
 func (c *character) move(right bool) {
-	if right {
-		c.vx = 1
-	} else {
-		c.vx = -1
-	}
-	c.facedRight = right
+	c.currentState.move(right)
 }
 
 func (c *character) jump() {
-	if c.vy == 0 {
-		c.vy = -jumpSpeed
-	}
+	c.currentState.jump()
 }
 
 func (c *character) draw(renderer *sdl.Renderer) {
-	displayedFrame := c.time / 10 % len(c.currentAnimationRects)
-	src := c.currentAnimationRects[displayedFrame]
+	currentAnimationRects := c.currentState.getAnimationRects()
+	displayedFrame := c.time / 10 % len(currentAnimationRects)
+	src := currentAnimationRects[displayedFrame]
 	dst := &sdl.Rect{c.x - characterDestWidth/2, c.y - characterDestHeight/2, characterDestWidth, characterDestHeight}
 	var flip sdl.RendererFlip
 	if c.facedRight {

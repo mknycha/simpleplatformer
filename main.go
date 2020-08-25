@@ -36,6 +36,8 @@ const (
 	characterDestHeight   = int32(characterSourceHeight * scaleY)
 )
 
+var platforms []*platform
+
 type relativeRectPosition struct{ xIndex, yIndex int }
 
 func main() {
@@ -151,7 +153,7 @@ func main() {
 	// }
 
 	player := newCharacter(0, 0, tileDestWidth, tileDestHeight, texCharacters)
-	platforms := []*platform{&platform1, &platform2}
+	platforms = []*platform{&platform1, &platform2}
 
 	running := true
 	for running {
