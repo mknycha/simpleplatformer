@@ -25,7 +25,7 @@ func newCharacterAnimationRects(positions []relativeRectPosition) []*sdl.Rect {
 type characterState interface {
 	move(bool)
 	jump()
-	update()
+	update([]*platform)
 	getAnimationRects() []*sdl.Rect
 }
 
@@ -50,7 +50,7 @@ func (s *standingState) jump() {
 	s.character.setState(s.character.jumping)
 }
 
-func (s *standingState) update() {
+func (s *standingState) update([]*platform) {
 	s.character.time = 0
 }
 
@@ -78,7 +78,7 @@ func (s *walkingState) jump() {
 	c.setState(c.jumping)
 }
 
-func (s *walkingState) update() {
+func (s *walkingState) update(platforms []*platform) {
 	c := s.character
 	c.time++
 	for _, p := range platforms {
@@ -113,7 +113,7 @@ func (s *jumpingState) move(right bool) {
 
 func (s *jumpingState) jump() {}
 
-func (s *jumpingState) update() {
+func (s *jumpingState) update([]*platform) {
 	s.character.time = 0
 	s.character.vy += gravity
 	if s.character.isFalling() {
@@ -141,7 +141,7 @@ func (s *fallingState) move(right bool) {
 
 func (s *fallingState) jump() {}
 
-func (s *fallingState) update() {
+func (s *fallingState) update(platforms []*platform) {
 	c := s.character
 	c.time = 0
 	c.vy += gravity
@@ -233,7 +233,7 @@ func newCharacter(x, y, w, h int32, texture *sdl.Texture) *character {
 func (c *character) update(platforms []*platform) {
 	c.x += int32(c.vx)
 	c.y += int32(c.vy)
-	c.currentState.update()
+	c.currentState.update(platforms)
 }
 
 func (c *character) isTouchingFromAbove(p *platform) bool {
