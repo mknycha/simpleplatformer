@@ -230,7 +230,7 @@ func newCharacter(x, y, w, h int32, texture *sdl.Texture) *character {
 	return &c
 }
 
-func (c *character) update(tileDestWidth int32, platforms []*platform) {
+func (c *character) update(platforms []*platform) {
 	c.x += int32(c.vx)
 	c.y += int32(c.vy)
 	c.currentState.update()

@@ -97,6 +97,57 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
+	player := newCharacter(0, 0, tileDestWidth, tileDestHeight, texCharacters)
+	platforms = createPlatforms(texBackground)
+
+	running := true
+	for running {
+		frameStart := time.Now()
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch e := event.(type) {
+			case *sdl.KeyboardEvent:
+				if sdl.K_RIGHT == e.Keysym.Sym {
+					if e.State == sdl.PRESSED {
+						player.move(true)
+					} else {
+						player.vx = 0
+					}
+				}
+				if sdl.K_LEFT == e.Keysym.Sym {
+					if e.State == sdl.PRESSED {
+						player.move(false)
+					} else {
+						player.vx = 0
+					}
+				}
+				if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
+					player.jump()
+				}
+			case *sdl.QuitEvent:
+				println("Quit")
+				running = false
+				break
+			}
+		}
+		player.update(platforms)
+
+		renderer.Clear()
+
+		for _, p := range platforms {
+			p.draw(renderer)
+		}
+		player.draw(renderer)
+
+		renderer.Present()
+		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
+		if elapsedTime < 5 {
+			sdl.Delay(5 - uint32(elapsedTime))
+			elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
+		}
+	}
+}
+
+func createPlatforms(texBackground *sdl.Texture) []*platform {
 	walkablePlatformRects := platformRects{
 		topLeftRect:   newPlatformRect(relativeRectPosition{10, 0}),
 		topMiddleRect: newPlatformRect(relativeRectPosition{11, 0}),
@@ -151,53 +202,5 @@ func main() {
 	// if err != nil {
 	// 	log.Fatalf(msg, err)
 	// }
-
-	player := newCharacter(0, 0, tileDestWidth, tileDestHeight, texCharacters)
-	platforms = []*platform{&platform1, &platform2}
-
-	running := true
-	for running {
-		frameStart := time.Now()
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch e := event.(type) {
-			case *sdl.KeyboardEvent:
-				if sdl.K_RIGHT == e.Keysym.Sym {
-					if e.State == sdl.PRESSED {
-						player.move(true)
-					} else {
-						player.vx = 0
-					}
-				}
-				if sdl.K_LEFT == e.Keysym.Sym {
-					if e.State == sdl.PRESSED {
-						player.move(false)
-					} else {
-						player.vx = 0
-					}
-				}
-				if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-					player.jump()
-				}
-			case *sdl.QuitEvent:
-				println("Quit")
-				running = false
-				break
-			}
-		}
-		player.update(tileDestWidth, platforms)
-
-		renderer.Clear()
-
-		for _, p := range platforms {
-			p.draw(renderer)
-		}
-		player.draw(renderer)
-
-		renderer.Present()
-		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
-		if elapsedTime < 5 {
-			sdl.Delay(5 - uint32(elapsedTime))
-			elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
-		}
-	}
+	return []*platform{&platform1, &platform2}
 }
