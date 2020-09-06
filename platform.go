@@ -43,11 +43,43 @@ type platform struct {
 	decorations []platformDecoration
 }
 
+func newWalkablePlatform(x, y, w, h int32, texture *sdl.Texture) (platform, error) {
+	walkablePlatformRects := platformRects{
+		topLeftRect:   newPlatformRect(relativeRectPosition{10, 0}),
+		topMiddleRect: newPlatformRect(relativeRectPosition{11, 0}),
+		topRightRect:  newPlatformRect(relativeRectPosition{12, 0}),
+		midLeftRect:   newPlatformRect(relativeRectPosition{10, 1}),
+		midMiddleRect: newPlatformRect(relativeRectPosition{11, 1}),
+		midRightRect:  newPlatformRect(relativeRectPosition{12, 1}),
+	}
+	return newPlatform(x, y, w, h, texture, walkablePlatformRects)
+}
+
 func newPlatform(x, y, w, h int32, texture *sdl.Texture, sourceRects platformRects) (platform, error) {
 	if w < tileDestWidth*3 {
 		return platform{}, fmt.Errorf("width value: %v must be higher (at least %v)", w, tileDestWidth*3)
 	}
 	return platform{x, y, w, h, texture, sourceRects, []platformDecoration{}}, nil
+}
+
+func (p *platform) addUpperLeftDecoration(x, y int32) error {
+	topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
+	return p.addDecoration(topLeftDecorationRect, x, y)
+}
+
+func (p *platform) addUpperMiddleDecoration(x, y int32) error {
+	topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
+	return p.addDecoration(topMiddleDecorationRect, x, y)
+}
+
+func (p *platform) addUpperRightDecoration(x, y int32) error {
+	topRightDecorationRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth - 1, tileSourceHeight - 1}
+	return p.addDecoration(topRightDecorationRect, x, y)
+}
+
+func (p *platform) addLowerMiddleDecoration(x, y int32) error {
+	midMiddleDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, tileSourceHeight, tileSourceWidth - 2, tileSourceHeight - 1}
+	return p.addDecoration(midMiddleDecorationRect, x, y)
 }
 
 // addDecoration adds a decoration tile from src of the platform texture to the position (relative to the platform)

@@ -129,10 +129,51 @@ func main() {
 					break
 				}
 			}
-			err := drawTitle(renderer, "King's Quest")
+			err := renderer.Clear()
+			if err != nil {
+				log.Fatalf("could not clear renderer: %v", err)
+			}
+
+			platform, err := newWalkablePlatform(windowWidth/2, windowHeight*0.9, windowWidth, windowHeight*0.2, texBackground)
+			if err != nil {
+				log.Fatalf("could not create a platform: %v", err)
+			}
+			err = platform.addUpperLeftDecoration(tileDestWidth*2, 0)
+			if err != nil {
+				log.Fatalf("could not add a decoration: %v", err)
+			}
+			decorationWidthInTiles := 23
+			for i := 3; i < decorationWidthInTiles; i++ {
+				err = platform.addUpperMiddleDecoration(tileDestWidth*int32(i), 0)
+				if err != nil {
+					log.Fatalf("could not add a decoration: %v", err)
+				}
+			}
+			err = platform.addUpperRightDecoration(tileDestWidth*int32(decorationWidthInTiles), 0)
+			if err != nil {
+				log.Fatalf("could not add a decoration: %v", err)
+			}
+			err = platform.addLowerMiddleDecoration(tileDestWidth*3, tileDestHeight)
+			if err != nil {
+				log.Fatalf("could not add a decoration: %v", err)
+			}
+			err = platform.addLowerMiddleDecoration(tileDestWidth*7, tileDestHeight*2)
+			if err != nil {
+				log.Fatalf("could not add a decoration: %v", err)
+			}
+			err = platform.addLowerMiddleDecoration(tileDestWidth*13, tileDestHeight)
+			if err != nil {
+				log.Fatalf("could not add a decoration: %v", err)
+			}
+
+			platform.draw(renderer)
+
+			err = drawText(renderer, "King's Quest")
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			renderer.Present()
 		} else if state == over {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 				switch e := event.(type) {
@@ -146,10 +187,17 @@ func main() {
 					break
 				}
 			}
-			err := drawTitle(renderer, "Game over")
+			err := renderer.Clear()
+			if err != nil {
+				log.Fatalf("could not clear renderer: %v", err)
+			}
+
+			err = drawText(renderer, "Game over")
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			renderer.Present()
 		} else if state == play {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 				switch e := event.(type) {
@@ -201,27 +249,18 @@ func main() {
 }
 
 func createPlatforms(texBackground *sdl.Texture) []*platform {
-	walkablePlatformRects := platformRects{
-		topLeftRect:   newPlatformRect(relativeRectPosition{10, 0}),
-		topMiddleRect: newPlatformRect(relativeRectPosition{11, 0}),
-		topRightRect:  newPlatformRect(relativeRectPosition{12, 0}),
-		midLeftRect:   newPlatformRect(relativeRectPosition{10, 1}),
-		midMiddleRect: newPlatformRect(relativeRectPosition{11, 1}),
-		midRightRect:  newPlatformRect(relativeRectPosition{12, 1}),
+	platform1, err := newWalkablePlatform(windowWidth/3, windowHeight*0.7, windowWidth/4, windowHeight*0.5, texBackground)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
+	}
+	platform2, err := newWalkablePlatform(windowWidth*0.1, windowHeight*0.9, windowWidth*0.25, windowHeight*0.5, texBackground)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
 	}
 	// topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
 	// topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
 	// topRightDecorationRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth - 1, tileSourceHeight - 1}
 	// midMiddleDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, tileDestHeight, tileSourceWidth - 2, tileSourceHeight - 1}
-
-	platform1, err := newPlatform(windowWidth/3, windowHeight*0.7, windowWidth/4, windowHeight*0.5, texBackground, walkablePlatformRects)
-	if err != nil {
-		log.Fatalf("could not create a platform: %v", err)
-	}
-	platform2, err := newPlatform(windowWidth*0.1, windowHeight*0.9, windowWidth*0.25, windowHeight*0.5, texBackground, walkablePlatformRects)
-	if err != nil {
-		log.Fatalf("could not create a platform: %v", err)
-	}
 	// msg := "could not add decoration to platform2: %v"
 	// err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*2, 0)
 	// if err != nil {
@@ -258,10 +297,8 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 	return []*platform{&platform1, &platform2}
 }
 
-func drawTitle(r *sdl.Renderer, text string) error {
-	r.Clear()
-
-	f, err := ttf.OpenFont("assets/test.ttf", 20)
+func drawText(r *sdl.Renderer, text string) error {
+	f, err := ttf.OpenFont("assets/test.ttf", 60)
 	if err != nil {
 		return fmt.Errorf("could not load font: %v", err)
 	}
@@ -280,11 +317,14 @@ func drawTitle(r *sdl.Renderer, text string) error {
 	}
 	defer t.Destroy()
 
-	if err := r.Copy(t, nil, nil); err != nil {
+	_, _, w, h, err := t.Query()
+	if err != nil {
+		return fmt.Errorf("could not query texture: %v", err)
+	}
+	dstRect := &sdl.Rect{windowWidth/2 - w/2, windowHeight/2 - h/2, w, h}
+	if err := r.Copy(t, nil, dstRect); err != nil {
 		return fmt.Errorf("could not copy texture: %v", err)
 	}
-
-	r.Present()
 
 	return nil
 }
