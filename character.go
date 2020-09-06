@@ -184,7 +184,7 @@ func (c *character) setState(s characterState) {
 	c.currentState = s
 }
 
-func newCharacter(x, y, w, h int32, texture *sdl.Texture) *character {
+func newCharacter(w, h int32, texture *sdl.Texture) *character {
 	standingPlayerRects := newCharacterAnimationRects([]relativeRectPosition{{0, 1}})
 	walkingPlayerRects := newCharacterAnimationRects([]relativeRectPosition{
 		{1, 1},
@@ -196,8 +196,8 @@ func newCharacter(x, y, w, h int32, texture *sdl.Texture) *character {
 	fallingPlayerRects := newCharacterAnimationRects([]relativeRectPosition{{7, 1}})
 
 	c := character{
-		x:          x,
-		y:          y,
+		x:          0,
+		y:          0,
 		w:          w,
 		h:          h,
 		vx:         0,
@@ -236,6 +236,11 @@ func (c *character) update(platforms []*platform) {
 	c.currentState.update(platforms)
 }
 
+func (c *character) reset() {
+	c.x, c.y = 0, 0
+	c.vx, c.vy = 0, 0
+}
+
 func (c *character) isTouchingFromAbove(p *platform) bool {
 	return c.y+c.h >= p.y-p.h/2 && c.y+c.h <= p.y-p.h/2+5 && c.x >= p.x-p.w/2 && c.x <= p.x+p.w/2
 }
@@ -246,6 +251,10 @@ func (c *character) isFalling() bool {
 
 func (c *character) isJumpingUpward() bool {
 	return c.vy < 0
+}
+
+func (c *character) isDead() bool {
+	return c.y-c.h > windowHeight
 }
 
 func (c *character) move(right bool) {

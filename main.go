@@ -1,7 +1,5 @@
 // TODO:
 // - create a level struct to encapsulate platforms,
-// - Start game state, and game over state
-// - Handle player's death
 // - Fix collisions (note that character does not take the whole tile!)
 // - What should be the character width?
 
@@ -10,10 +8,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/veandco/go-sdl2/img"
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
 const (
@@ -36,6 +36,16 @@ const (
 	characterDestHeight   = int32(characterSourceHeight * scaleY)
 )
 
+type gameState int
+
+const (
+	start gameState = iota
+	play
+	over
+)
+
+var state = start
+
 type relativeRectPosition struct{ xIndex, yIndex int }
 
 func main() {
@@ -43,6 +53,11 @@ func main() {
 		panic(err)
 	}
 	defer sdl.Quit()
+
+	if err := ttf.Init(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize TTF: %s\n", err)
+		return
+	}
 
 	window, err := sdl.CreateWindow("Platformer", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(windowWidth), int32(windowHeight), sdl.WINDOW_SHOWN)
@@ -95,48 +110,88 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
-	player := newCharacter(0, 0, tileDestWidth, tileDestHeight, texCharacters)
+	player := newCharacter(tileDestWidth, tileDestHeight, texCharacters)
 	platforms := createPlatforms(texBackground)
 
 	running := true
 	for running {
 		frameStart := time.Now()
-		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch e := event.(type) {
-			case *sdl.KeyboardEvent:
-				if sdl.K_RIGHT == e.Keysym.Sym {
-					if e.State == sdl.PRESSED {
-						player.move(true)
-					} else {
-						player.vx = 0
+		if state == start {
+			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+				switch e := event.(type) {
+				case *sdl.KeyboardEvent:
+					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
+						state = play
 					}
+				case *sdl.QuitEvent:
+					println("Quit")
+					running = false
+					break
 				}
-				if sdl.K_LEFT == e.Keysym.Sym {
-					if e.State == sdl.PRESSED {
-						player.move(false)
-					} else {
-						player.vx = 0
-					}
-				}
-				if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-					player.jump()
-				}
-			case *sdl.QuitEvent:
-				println("Quit")
-				running = false
-				break
 			}
+			err := drawTitle(renderer, "King's Quest")
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if state == over {
+			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+				switch e := event.(type) {
+				case *sdl.KeyboardEvent:
+					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
+						state = play
+					}
+				case *sdl.QuitEvent:
+					println("Quit")
+					running = false
+					break
+				}
+			}
+			err := drawTitle(renderer, "Game over")
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if state == play {
+			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+				switch e := event.(type) {
+				case *sdl.KeyboardEvent:
+					if sdl.K_RIGHT == e.Keysym.Sym {
+						if e.State == sdl.PRESSED {
+							player.move(true)
+						} else {
+							player.vx = 0
+						}
+					}
+					if sdl.K_LEFT == e.Keysym.Sym {
+						if e.State == sdl.PRESSED {
+							player.move(false)
+						} else {
+							player.vx = 0
+						}
+					}
+					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
+						player.jump()
+					}
+				case *sdl.QuitEvent:
+					println("Quit")
+					running = false
+					break
+				}
+			}
+			player.update(platforms)
+			if player.isDead() {
+				state = over
+				player.reset()
+			}
+
+			renderer.Clear()
+
+			for _, p := range platforms {
+				p.draw(renderer)
+			}
+			player.draw(renderer)
+
+			renderer.Present()
 		}
-		player.update(platforms)
-
-		renderer.Clear()
-
-		for _, p := range platforms {
-			p.draw(renderer)
-		}
-		player.draw(renderer)
-
-		renderer.Present()
 		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
 		if elapsedTime < 5 {
 			sdl.Delay(5 - uint32(elapsedTime))
@@ -201,4 +256,35 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 	// 	log.Fatalf(msg, err)
 	// }
 	return []*platform{&platform1, &platform2}
+}
+
+func drawTitle(r *sdl.Renderer, text string) error {
+	r.Clear()
+
+	f, err := ttf.OpenFont("assets/test.ttf", 20)
+	if err != nil {
+		return fmt.Errorf("could not load font: %v", err)
+	}
+	defer f.Close()
+
+	c := sdl.Color{R: 255, G: 100, B: 0, A: 255}
+	s, err := f.RenderUTF8Solid(text, c)
+	if err != nil {
+		return fmt.Errorf("could not render title: %v", err)
+	}
+	defer s.Free()
+
+	t, err := r.CreateTextureFromSurface(s)
+	if err != nil {
+		return fmt.Errorf("could not create texture: %v", err)
+	}
+	defer t.Destroy()
+
+	if err := r.Copy(t, nil, nil); err != nil {
+		return fmt.Errorf("could not copy texture: %v", err)
+	}
+
+	r.Present()
+
+	return nil
 }
