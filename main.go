@@ -204,6 +204,9 @@ func main() {
 					drawingFromX--
 				}
 			}
+			if player.x < drawingFromX {
+				player.x = 0
+			}
 
 			renderer.Clear()
 
