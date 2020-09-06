@@ -129,49 +129,9 @@ func main() {
 					break
 				}
 			}
-			err := renderer.Clear()
-			if err != nil {
-				log.Fatalf("could not clear renderer: %v", err)
-			}
+			renderer.Clear()
 
-			platform, err := newWalkablePlatform(windowWidth/2, windowHeight*0.9, windowWidth, windowHeight*0.2, texBackground)
-			if err != nil {
-				log.Fatalf("could not create a platform: %v", err)
-			}
-			err = platform.addUpperLeftDecoration(tileDestWidth*2, 0)
-			if err != nil {
-				log.Fatalf("could not add a decoration: %v", err)
-			}
-			decorationWidthInTiles := 23
-			for i := 3; i < decorationWidthInTiles; i++ {
-				err = platform.addUpperMiddleDecoration(tileDestWidth*int32(i), 0)
-				if err != nil {
-					log.Fatalf("could not add a decoration: %v", err)
-				}
-			}
-			err = platform.addUpperRightDecoration(tileDestWidth*int32(decorationWidthInTiles), 0)
-			if err != nil {
-				log.Fatalf("could not add a decoration: %v", err)
-			}
-			err = platform.addLowerMiddleDecoration(tileDestWidth*3, tileDestHeight)
-			if err != nil {
-				log.Fatalf("could not add a decoration: %v", err)
-			}
-			err = platform.addLowerMiddleDecoration(tileDestWidth*7, tileDestHeight*2)
-			if err != nil {
-				log.Fatalf("could not add a decoration: %v", err)
-			}
-			err = platform.addLowerMiddleDecoration(tileDestWidth*13, tileDestHeight)
-			if err != nil {
-				log.Fatalf("could not add a decoration: %v", err)
-			}
-
-			platform.draw(renderer)
-
-			err = drawText(renderer, "King's Quest")
-			if err != nil {
-				log.Fatal(err)
-			}
+			displayTitle(renderer, texBackground)
 
 			renderer.Present()
 		} else if state == over {
@@ -187,10 +147,7 @@ func main() {
 					break
 				}
 			}
-			err := renderer.Clear()
-			if err != nil {
-				log.Fatalf("could not clear renderer: %v", err)
-			}
+			renderer.Clear()
 
 			err = drawText(renderer, "Game over")
 			if err != nil {
@@ -295,6 +252,47 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 	// 	log.Fatalf(msg, err)
 	// }
 	return []*platform{&platform1, &platform2}
+}
+
+func displayTitle(r *sdl.Renderer, texBackground *sdl.Texture) {
+	platform, err := newWalkablePlatform(windowWidth/2, windowHeight*0.9, windowWidth, windowHeight*0.2, texBackground)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
+	}
+	err = platform.addUpperLeftDecoration(tileDestWidth*2, 0)
+	if err != nil {
+		log.Fatalf("could not add a decoration: %v", err)
+	}
+	decorationWidthInTiles := 23
+	for i := 3; i < decorationWidthInTiles; i++ {
+		err = platform.addUpperMiddleDecoration(tileDestWidth*int32(i), 0)
+		if err != nil {
+			log.Fatalf("could not add a decoration: %v", err)
+		}
+	}
+	err = platform.addUpperRightDecoration(tileDestWidth*int32(decorationWidthInTiles), 0)
+	if err != nil {
+		log.Fatalf("could not add a decoration: %v", err)
+	}
+	err = platform.addLowerMiddleDecoration(tileDestWidth*3, tileDestHeight)
+	if err != nil {
+		log.Fatalf("could not add a decoration: %v", err)
+	}
+	err = platform.addLowerMiddleDecoration(tileDestWidth*7, tileDestHeight*2)
+	if err != nil {
+		log.Fatalf("could not add a decoration: %v", err)
+	}
+	err = platform.addLowerMiddleDecoration(tileDestWidth*13, tileDestHeight)
+	if err != nil {
+		log.Fatalf("could not add a decoration: %v", err)
+	}
+
+	platform.draw(r)
+
+	err = drawText(r, "King's Quest")
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func drawText(r *sdl.Renderer, text string) error {
