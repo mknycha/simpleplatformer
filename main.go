@@ -46,9 +46,12 @@ const (
 
 var state = start
 
+var drawingFromX int32
+
 type relativeRectPosition struct{ xIndex, yIndex int }
 
 func main() {
+	drawingFromX = 0
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
@@ -187,6 +190,20 @@ func main() {
 				state = over
 				player.reset()
 			}
+			if player.x+(tileDestWidth*3) > windowWidth {
+				for _, p := range platforms {
+					p.x -= 3
+					player.x -= int32(player.vx)
+					drawingFromX++
+				}
+			}
+			if player.x < (tileDestWidth*3) && drawingFromX > 0 {
+				for _, p := range platforms {
+					p.x += 3
+					player.x -= int32(player.vx)
+					drawingFromX--
+				}
+			}
 
 			renderer.Clear()
 
@@ -211,6 +228,10 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 		log.Fatalf("could not create a platform: %v", err)
 	}
 	platform2, err := newWalkablePlatform(windowWidth*0.1, windowHeight*0.9, windowWidth*0.25, windowHeight*0.5, texBackground)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
+	}
+	platform3, err := newWalkablePlatform(tileDestWidth*16, tileDestHeight*14, tileDestWidth*24, tileDestHeight*5, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
@@ -251,7 +272,7 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 	// if err != nil {
 	// 	log.Fatalf(msg, err)
 	// }
-	return []*platform{&platform1, &platform2}
+	return []*platform{&platform1, &platform2, &platform3}
 }
 
 func displayTitle(r *sdl.Renderer, texBackground *sdl.Texture) {
