@@ -209,7 +209,7 @@ func main() {
 					p.x++
 				}
 			}
-			if player.x < drawingStartX {
+			if player.x < 0 {
 				player.x = 0
 			}
 
