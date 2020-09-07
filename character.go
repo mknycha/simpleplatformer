@@ -257,6 +257,14 @@ func (c *character) isDead() bool {
 	return c.y-c.h > windowHeight
 }
 
+func (c *character) isCloseToRightScreenEdge() bool {
+	return c.x+(tileDestWidth*3) > windowWidth
+}
+
+func (c *character) isCloseToLeftScreenEdge() bool {
+	return c.x < (tileDestWidth * 3)
+}
+
 func (c *character) move(right bool) {
 	c.currentState.move(right)
 }

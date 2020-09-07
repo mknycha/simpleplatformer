@@ -46,12 +46,12 @@ const (
 
 var state = start
 
-var drawingFromX int32
+var drawingStartX int32
 
 type relativeRectPosition struct{ xIndex, yIndex int }
 
 func main() {
-	drawingFromX = 0
+	drawingStartX = 0
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
@@ -190,21 +190,21 @@ func main() {
 				state = over
 				player.reset()
 			}
-			if player.x+(tileDestWidth*3) > windowWidth {
+			if player.isCloseToRightScreenEdge() {
+				player.x -= int32(player.vx)
+				drawingStartX++
 				for _, p := range platforms {
-					p.x -= 3
-					player.x -= int32(player.vx)
-					drawingFromX++
+					p.x--
 				}
 			}
-			if player.x < (tileDestWidth*3) && drawingFromX > 0 {
+			if player.isCloseToLeftScreenEdge() && drawingStartX > 0 {
+				player.x -= int32(player.vx)
+				drawingStartX--
 				for _, p := range platforms {
-					p.x += 3
-					player.x -= int32(player.vx)
-					drawingFromX--
+					p.x++
 				}
 			}
-			if player.x < drawingFromX {
+			if player.x < drawingStartX {
 				player.x = 0
 			}
 
