@@ -157,6 +157,12 @@ func main() {
 				log.Fatal(err)
 			}
 
+			for _, p := range platforms {
+				p.x += drawingStartX
+			}
+			drawingStartX = 0
+			player.reset()
+
 			renderer.Present()
 		} else if state == play {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
@@ -188,7 +194,6 @@ func main() {
 			player.update(platforms)
 			if player.isDead() {
 				state = over
-				player.reset()
 			}
 			if player.isCloseToRightScreenEdge() {
 				player.x -= int32(player.vx)
