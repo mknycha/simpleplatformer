@@ -36,22 +36,19 @@ const (
 	characterDestHeight   = int32(characterSourceHeight * scaleY)
 )
 
-type gameState int
+type generalState int
 
 const (
-	start gameState = iota
+	start generalState = iota
 	play
 	over
 )
 
 var state = start
 
-var drawingStartX int32
-
 type relativeRectPosition struct{ xIndex, yIndex int }
 
 func main() {
-	drawingStartX = 0
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
@@ -113,9 +110,6 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
-	player := newCharacter(tileDestWidth, tileDestHeight, texCharacters)
-	platforms := createPlatforms(texBackground)
-
 	running := true
 	for running {
 		frameStart := time.Now()
@@ -157,70 +151,14 @@ func main() {
 				log.Fatal(err)
 			}
 
-			for _, p := range platforms {
-				p.x += drawingStartX
-			}
-			drawingStartX = 0
-			player.reset()
-
 			renderer.Present()
 		} else if state == play {
-			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-				switch e := event.(type) {
-				case *sdl.KeyboardEvent:
-					if sdl.K_RIGHT == e.Keysym.Sym {
-						if e.State == sdl.PRESSED {
-							player.move(true)
-						} else {
-							player.vx = 0
-						}
-					}
-					if sdl.K_LEFT == e.Keysym.Sym {
-						if e.State == sdl.PRESSED {
-							player.move(false)
-						} else {
-							player.vx = 0
-						}
-					}
-					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-						player.jump()
-					}
-				case *sdl.QuitEvent:
-					println("Quit")
-					running = false
-					break
-				}
+			game := newGame(texCharacters, texBackground)
+			newState, running := game.run(renderer)
+			if !running {
+				break
 			}
-			player.update(platforms)
-			if player.isDead() {
-				state = over
-			}
-			if player.isCloseToRightScreenEdge() {
-				player.x -= int32(player.vx)
-				drawingStartX++
-				for _, p := range platforms {
-					p.x--
-				}
-			}
-			if player.isCloseToLeftScreenEdge() && drawingStartX > 0 {
-				player.x -= int32(player.vx)
-				drawingStartX--
-				for _, p := range platforms {
-					p.x++
-				}
-			}
-			if player.x < 0 {
-				player.x = 0
-			}
-
-			renderer.Clear()
-
-			for _, p := range platforms {
-				p.draw(renderer)
-			}
-			player.draw(renderer)
-
-			renderer.Present()
+			state = newState
 		}
 		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
 		if elapsedTime < 5 {
