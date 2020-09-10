@@ -36,10 +36,10 @@ const (
 	characterDestHeight   = int32(characterSourceHeight * scaleY)
 )
 
-type gameState int
+type generalState int
 
 const (
-	start gameState = iota
+	start generalState = iota
 	play
 	over
 )
@@ -110,9 +110,6 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
-	player := newCharacter(tileDestWidth, tileDestHeight, texCharacters)
-	platforms := createPlatforms(texBackground)
-
 	running := true
 	for running {
 		frameStart := time.Now()
@@ -156,46 +153,12 @@ func main() {
 
 			renderer.Present()
 		} else if state == play {
-			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-				switch e := event.(type) {
-				case *sdl.KeyboardEvent:
-					if sdl.K_RIGHT == e.Keysym.Sym {
-						if e.State == sdl.PRESSED {
-							player.move(true)
-						} else {
-							player.vx = 0
-						}
-					}
-					if sdl.K_LEFT == e.Keysym.Sym {
-						if e.State == sdl.PRESSED {
-							player.move(false)
-						} else {
-							player.vx = 0
-						}
-					}
-					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-						player.jump()
-					}
-				case *sdl.QuitEvent:
-					println("Quit")
-					running = false
-					break
-				}
+			game := newGame(texCharacters, texBackground)
+			newState, running := game.run(renderer)
+			if !running {
+				break
 			}
-			player.update(platforms)
-			if player.isDead() {
-				state = over
-				player.reset()
-			}
-
-			renderer.Clear()
-
-			for _, p := range platforms {
-				p.draw(renderer)
-			}
-			player.draw(renderer)
-
-			renderer.Present()
+			state = newState
 		}
 		elapsedTime = float32(time.Since(frameStart).Seconds() * 1000)
 		if elapsedTime < 5 {
@@ -211,6 +174,10 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 		log.Fatalf("could not create a platform: %v", err)
 	}
 	platform2, err := newWalkablePlatform(windowWidth*0.1, windowHeight*0.9, windowWidth*0.25, windowHeight*0.5, texBackground)
+	if err != nil {
+		log.Fatalf("could not create a platform: %v", err)
+	}
+	platform3, err := newWalkablePlatform(tileDestWidth*16, tileDestHeight*14, tileDestWidth*24, tileDestHeight*5, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
@@ -251,7 +218,7 @@ func createPlatforms(texBackground *sdl.Texture) []*platform {
 	// if err != nil {
 	// 	log.Fatalf(msg, err)
 	// }
-	return []*platform{&platform1, &platform2}
+	return []*platform{&platform1, &platform2, &platform3}
 }
 
 func displayTitle(r *sdl.Renderer, texBackground *sdl.Texture) {
