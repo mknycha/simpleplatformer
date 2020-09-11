@@ -9,6 +9,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"simpleplatformer/common"
+	"simpleplatformer/constants"
+	_ "simpleplatformer/constants"
+	"simpleplatformer/game"
+	"simpleplatformer/game/platforms"
 	"time"
 
 	"github.com/veandco/go-sdl2/img"
@@ -16,37 +21,7 @@ import (
 	"github.com/veandco/go-sdl2/ttf"
 )
 
-const (
-	windowWidth  = 860
-	windowHeight = 510
-	gravity      = 0.05
-	jumpSpeed    = 4
-)
-
-const (
-	scaleX                = windowWidth / 288
-	scaleY                = windowHeight / 172
-	tileSourceWidth       = int32(16)
-	tileSourceHeight      = int32(128 / 8)
-	tileDestWidth         = int32(tileSourceWidth * scaleX)
-	tileDestHeight        = int32(tileSourceHeight * scaleY)
-	characterSourceWidth  = int32(32)
-	characterSourceHeight = int32(32)
-	characterDestWidth    = int32(characterSourceWidth * scaleX)
-	characterDestHeight   = int32(characterSourceHeight * scaleY)
-)
-
-type generalState int
-
-const (
-	start generalState = iota
-	play
-	over
-)
-
-var state = start
-
-type relativeRectPosition struct{ xIndex, yIndex int }
+var state = common.Start
 
 func main() {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
@@ -60,7 +35,7 @@ func main() {
 	}
 
 	window, err := sdl.CreateWindow("Platformer", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		int32(windowWidth), int32(windowHeight), sdl.WINDOW_SHOWN)
+		int32(constants.WindowWidth), int32(constants.WindowHeight), sdl.WINDOW_SHOWN)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -96,6 +71,7 @@ func main() {
 	// }()
 
 	var elapsedTime float32
+	var g *game.Game
 
 	renderer.SetDrawColor(uint8(66), uint8(135), uint8(245), uint8(0))
 
@@ -113,12 +89,13 @@ func main() {
 	running := true
 	for running {
 		frameStart := time.Now()
-		if state == start {
+		if state == common.Start {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 				switch e := event.(type) {
 				case *sdl.KeyboardEvent:
 					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-						state = play
+						g = game.NewGame(texCharacters, texBackground)
+						state = common.Play
 					}
 				case *sdl.QuitEvent:
 					println("Quit")
@@ -131,12 +108,13 @@ func main() {
 			displayTitle(renderer, texBackground)
 
 			renderer.Present()
-		} else if state == over {
+		} else if state == common.Over {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 				switch e := event.(type) {
 				case *sdl.KeyboardEvent:
 					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-						state = play
+						g = game.NewGame(texCharacters, texBackground)
+						state = common.Play
 					}
 				case *sdl.QuitEvent:
 					println("Quit")
@@ -152,9 +130,9 @@ func main() {
 			}
 
 			renderer.Present()
-		} else if state == play {
-			game := newGame(texCharacters, texBackground)
-			newState, running := game.run(renderer)
+		} else if state == common.Play {
+			var newState common.GeneralState
+			newState, running = g.Run(renderer)
 			if !running {
 				break
 			}
@@ -168,93 +146,40 @@ func main() {
 	}
 }
 
-func createPlatforms(texBackground *sdl.Texture) []*platform {
-	platform1, err := newWalkablePlatform(windowWidth/3, windowHeight*0.7, windowWidth/4, windowHeight*0.5, texBackground)
-	if err != nil {
-		log.Fatalf("could not create a platform: %v", err)
-	}
-	platform2, err := newWalkablePlatform(windowWidth*0.1, windowHeight*0.9, windowWidth*0.25, windowHeight*0.5, texBackground)
-	if err != nil {
-		log.Fatalf("could not create a platform: %v", err)
-	}
-	platform3, err := newWalkablePlatform(tileDestWidth*16, tileDestHeight*14, tileDestWidth*24, tileDestHeight*5, texBackground)
-	if err != nil {
-		log.Fatalf("could not create a platform: %v", err)
-	}
-	// topLeftDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, 0, tileSourceWidth, tileSourceHeight - 1}
-	// topMiddleDecorationRect := &sdl.Rect{tileSourceWidth * 8, 0, tileSourceWidth, tileSourceHeight - 1}
-	// topRightDecorationRect := &sdl.Rect{tileSourceWidth * 9, 0, tileSourceWidth - 1, tileSourceHeight - 1}
-	// midMiddleDecorationRect := &sdl.Rect{tileSourceWidth*7 + 1, tileDestHeight, tileSourceWidth - 2, tileSourceHeight - 1}
-	// msg := "could not add decoration to platform2: %v"
-	// err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*2, 0)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*3, 0)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*4, 0)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(topLeftDecorationRect, tileDestWidth*10, 0)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(topMiddleDecorationRect, tileDestWidth*11, 0)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(topRightDecorationRect, tileDestWidth*12, 0)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*3, tileDestHeight)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	// err = platform2.addDecoration(midMiddleDecorationRect, tileDestWidth*7, tileDestHeight*2)
-	// if err != nil {
-	// 	log.Fatalf(msg, err)
-	// }
-	return []*platform{&platform1, &platform2, &platform3}
-}
-
 func displayTitle(r *sdl.Renderer, texBackground *sdl.Texture) {
-	platform, err := newWalkablePlatform(windowWidth/2, windowHeight*0.9, windowWidth, windowHeight*0.2, texBackground)
+	platform, err := platforms.NewWalkablePlatform(constants.WindowWidth/2, constants.WindowHeight*0.9, constants.WindowWidth, constants.WindowHeight*0.2, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
-	err = platform.addUpperLeftDecoration(tileDestWidth*2, 0)
+	err = platform.AddUpperLeftDecoration(constants.TileDestWidth*2, 0)
 	if err != nil {
 		log.Fatalf("could not add a decoration: %v", err)
 	}
 	decorationWidthInTiles := 23
 	for i := 3; i < decorationWidthInTiles; i++ {
-		err = platform.addUpperMiddleDecoration(tileDestWidth*int32(i), 0)
+		err = platform.AddUpperMiddleDecoration(constants.TileDestWidth*int32(i), 0)
 		if err != nil {
 			log.Fatalf("could not add a decoration: %v", err)
 		}
 	}
-	err = platform.addUpperRightDecoration(tileDestWidth*int32(decorationWidthInTiles), 0)
+	err = platform.AddUpperRightDecoration(constants.TileDestWidth*int32(decorationWidthInTiles), 0)
 	if err != nil {
 		log.Fatalf("could not add a decoration: %v", err)
 	}
-	err = platform.addLowerMiddleDecoration(tileDestWidth*3, tileDestHeight)
+	err = platform.AddLowerMiddleDecoration(constants.TileDestWidth*3, constants.TileDestHeight)
 	if err != nil {
 		log.Fatalf("could not add a decoration: %v", err)
 	}
-	err = platform.addLowerMiddleDecoration(tileDestWidth*7, tileDestHeight*2)
+	err = platform.AddLowerMiddleDecoration(constants.TileDestWidth*7, constants.TileDestHeight*2)
 	if err != nil {
 		log.Fatalf("could not add a decoration: %v", err)
 	}
-	err = platform.addLowerMiddleDecoration(tileDestWidth*13, tileDestHeight)
+	err = platform.AddLowerMiddleDecoration(constants.TileDestWidth*13, constants.TileDestHeight)
 	if err != nil {
 		log.Fatalf("could not add a decoration: %v", err)
 	}
 
-	platform.draw(r)
+	platform.Draw(r)
 
 	err = drawText(r, "King's Quest")
 	if err != nil {
@@ -286,7 +211,7 @@ func drawText(r *sdl.Renderer, text string) error {
 	if err != nil {
 		return fmt.Errorf("could not query texture: %v", err)
 	}
-	dstRect := &sdl.Rect{windowWidth/2 - w/2, windowHeight/2 - h/2, w, h}
+	dstRect := &sdl.Rect{constants.WindowWidth/2 - w/2, constants.WindowHeight/2 - h/2, w, h}
 	if err := r.Copy(t, nil, dstRect); err != nil {
 		return fmt.Errorf("could not copy texture: %v", err)
 	}
