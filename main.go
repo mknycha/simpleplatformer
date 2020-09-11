@@ -11,7 +11,6 @@ import (
 	"os"
 	"simpleplatformer/common"
 	"simpleplatformer/constants"
-	_ "simpleplatformer/constants"
 	"simpleplatformer/game"
 	"simpleplatformer/game/platforms"
 	"time"
