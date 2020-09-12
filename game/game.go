@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"log"
 	"simpleplatformer/common"
 	"simpleplatformer/constants"
@@ -29,6 +30,7 @@ func (g *Game) Run(r *sdl.Renderer) (common.GeneralState, bool) {
 		case *sdl.KeyboardEvent:
 			if sdl.K_RIGHT == e.Keysym.Sym {
 				if e.State == sdl.PRESSED {
+					fmt.Println("right")
 					g.player.Move(true)
 				} else {
 					g.player.ResetVX()
@@ -36,13 +38,19 @@ func (g *Game) Run(r *sdl.Renderer) (common.GeneralState, bool) {
 			}
 			if sdl.K_LEFT == e.Keysym.Sym {
 				if e.State == sdl.PRESSED {
+					fmt.Println("left")
 					g.player.Move(false)
 				} else {
 					g.player.ResetVX()
 				}
 			}
 			if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
+				fmt.Println("jump")
 				g.player.Jump()
+			}
+			if sdl.K_LCTRL == e.Keysym.Sym && e.State == sdl.PRESSED {
+				fmt.Println("attack")
+				g.player.Attack()
 			}
 		case *sdl.QuitEvent:
 			println("Quit")
@@ -54,14 +62,14 @@ func (g *Game) Run(r *sdl.Renderer) (common.GeneralState, bool) {
 		return common.Over, true
 	}
 	if g.player.IsCloseToRightScreenEdge() {
-		g.player.X -= int32(g.player.VX)
+		g.player.X--
 		g.shiftScreenX++
 		for _, p := range g.platforms {
 			p.X--
 		}
 	}
 	if g.player.IsCloseToLeftScreenEdge() && g.shiftScreenX > 0 {
-		g.player.X -= int32(g.player.VX)
+		g.player.X++
 		g.shiftScreenX--
 		for _, p := range g.platforms {
 			p.X++

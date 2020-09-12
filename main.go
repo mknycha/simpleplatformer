@@ -1,4 +1,8 @@
 // TODO:
+// - Add some enemies
+// - Make the enemies move and attack player
+// - Handle collisions with enemies
+// - Handle player getting hit by the enemy and the other way around
 // - create a level struct to encapsulate platforms,
 // - Fix collisions (note that character does not take the whole tile!)
 // - What should be the character width?

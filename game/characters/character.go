@@ -28,6 +28,7 @@ func newCharacterAnimationRects(positions []common.RelativeRectPosition) []*sdl.
 type characterState interface {
 	move(bool)
 	jump()
+	attack()
 	update([]*platforms.Platform)
 	getAnimationRects() []*sdl.Rect
 }
@@ -53,9 +54,11 @@ func (s *standingState) jump() {
 	s.character.setState(s.character.jumping)
 }
 
-func (s *standingState) update([]*platforms.Platform) {
-	s.character.time = 0
+func (s *standingState) attack() {
+	s.character.setState(s.character.attacking)
 }
+
+func (s *standingState) update([]*platforms.Platform) {}
 
 func (s *standingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
@@ -79,6 +82,10 @@ func (s *walkingState) jump() {
 	c := s.character
 	c.VY = -constants.JumpSpeed
 	c.setState(c.jumping)
+}
+
+func (s *walkingState) attack() {
+	s.character.setState(s.character.attacking)
 }
 
 func (s *walkingState) update(platforms []*platforms.Platform) {
@@ -116,6 +123,8 @@ func (s *jumpingState) move(right bool) {
 
 func (s *jumpingState) jump() {}
 
+func (s *jumpingState) attack() {}
+
 func (s *jumpingState) update([]*platforms.Platform) {
 	s.character.time = 0
 	s.character.VY += constants.Gravity
@@ -144,6 +153,8 @@ func (s *fallingState) move(right bool) {
 
 func (s *fallingState) jump() {}
 
+func (s *fallingState) attack() {}
+
 func (s *fallingState) update(platforms []*platforms.Platform) {
 	c := s.character
 	c.time = 0
@@ -165,6 +176,30 @@ func (s *fallingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+type attackingState struct {
+	character      *Character
+	animationRects []*sdl.Rect
+}
+
+func (s *attackingState) move(right bool) {}
+
+func (s *attackingState) jump() {}
+
+func (s *attackingState) attack() {}
+
+func (s *attackingState) update(platforms []*platforms.Platform) {
+	c := s.character
+	c.ResetVX()
+	c.time++
+	if c.time > len(s.getAnimationRects())*10 {
+		c.setState(c.standing)
+	}
+}
+
+func (s *attackingState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
+}
+
 type Character struct {
 	X            int32
 	Y            int32
@@ -177,13 +212,15 @@ type Character struct {
 	facedRight   bool
 	currentState characterState
 
-	standing characterState
-	walking  characterState
-	jumping  characterState
-	falling  characterState
+	standing  characterState
+	walking   characterState
+	jumping   characterState
+	attacking characterState
+	falling   characterState
 }
 
 func (c *Character) setState(s characterState) {
+	c.time = 0
 	c.currentState = s
 }
 
@@ -197,6 +234,12 @@ func NewCharacter(w, h int32, texture *sdl.Texture) *Character {
 	})
 	jumpingUpwardPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{{6, 1}})
 	fallingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{{7, 1}})
+	attackingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{
+		{12, 1},
+		{11, 1},
+		{12, 1},
+		{13, 1},
+	})
 
 	c := Character{
 		X:          0,
@@ -225,10 +268,15 @@ func NewCharacter(w, h int32, texture *sdl.Texture) *Character {
 		character:      &c,
 		animationRects: fallingPlayerRects,
 	}
+	attackingPlayerState := attackingState{
+		character:      &c,
+		animationRects: attackingPlayerRects,
+	}
 	c.standing = &standingPlayerState
 	c.walking = &walkingPlayerState
 	c.jumping = &jumpingPlayerState
 	c.falling = &fallingPlayerState
+	c.attacking = &attackingPlayerState
 	c.setState(c.falling)
 	return &c
 }
@@ -282,6 +330,10 @@ func (c *Character) Move(right bool) {
 
 func (c *Character) Jump() {
 	c.currentState.jump()
+}
+
+func (c *Character) Attack() {
+	c.currentState.attack()
 }
 
 func (c *Character) Draw(renderer *sdl.Renderer) {
