@@ -41,9 +41,9 @@ type standingState struct {
 func (s *standingState) move(right bool) {
 	c := s.character
 	if right {
-		c.vx = 1
+		c.vx = constants.CharacterXSpeed
 	} else {
-		c.vx = -1
+		c.vx = -constants.CharacterXSpeed
 	}
 	c.facedRight = right
 	c.setState(c.walking)
@@ -71,9 +71,9 @@ type walkingState struct {
 
 func (s *walkingState) move(right bool) {
 	if right {
-		s.character.vx = 1
+		s.character.vx = constants.CharacterXSpeed
 	} else {
-		s.character.vx = -1
+		s.character.vx = -constants.CharacterXSpeed
 	}
 	s.character.facedRight = right
 }
@@ -114,9 +114,9 @@ type jumpingState struct {
 
 func (s *jumpingState) move(right bool) {
 	if right {
-		s.character.vx = 1
+		s.character.vx = constants.CharacterXSpeed
 	} else {
-		s.character.vx = -1
+		s.character.vx = -constants.CharacterXSpeed
 	}
 	s.character.facedRight = right
 }
@@ -144,9 +144,9 @@ type fallingState struct {
 
 func (s *fallingState) move(right bool) {
 	if right {
-		s.character.vx = 1
+		s.character.vx = constants.CharacterXSpeed
 	} else {
-		s.character.vx = -1
+		s.character.vx = -constants.CharacterXSpeed
 	}
 	s.character.facedRight = right
 }

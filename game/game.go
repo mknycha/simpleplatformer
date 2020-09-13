@@ -53,14 +53,14 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		return common.Over, true
 	}
 	if g.player.IsCloseToRightScreenEdge() {
-		g.player.X--
+		g.player.X -= constants.CharacterXSpeed
 		g.shiftScreenX++
 		for _, p := range g.platforms {
 			p.X--
 		}
 	}
 	if g.player.IsCloseToLeftScreenEdge() && g.shiftScreenX > 0 {
-		g.player.X++
+		g.player.X += constants.CharacterXSpeed
 		g.shiftScreenX--
 		for _, p := range g.platforms {
 			p.X++
