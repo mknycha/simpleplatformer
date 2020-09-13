@@ -89,6 +89,8 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
+	keyState := sdl.GetKeyboardState()
+
 	running := true
 	for running {
 		frameStart := time.Now()
@@ -135,7 +137,7 @@ func main() {
 			renderer.Present()
 		} else if state == common.Play {
 			var newState common.GeneralState
-			newState, running = g.Run(renderer)
+			newState, running = g.Run(renderer, keyState)
 			if !running {
 				break
 			}

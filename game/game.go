@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"log"
 	"simpleplatformer/common"
 	"simpleplatformer/constants"
@@ -24,39 +23,31 @@ type Game struct {
 	shiftScreenX int32
 }
 
-func (g *Game) Run(r *sdl.Renderer) (common.GeneralState, bool) {
+func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool) {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch e := event.(type) {
-		case *sdl.KeyboardEvent:
-			if sdl.K_RIGHT == e.Keysym.Sym {
-				if e.State == sdl.PRESSED {
-					fmt.Println("right")
-					g.player.Move(true)
-				} else {
-					g.player.ResetVX()
-				}
-			}
-			if sdl.K_LEFT == e.Keysym.Sym {
-				if e.State == sdl.PRESSED {
-					fmt.Println("left")
-					g.player.Move(false)
-				} else {
-					g.player.ResetVX()
-				}
-			}
-			if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-				fmt.Println("jump")
-				g.player.Jump()
-			}
-			if sdl.K_LCTRL == e.Keysym.Sym && e.State == sdl.PRESSED {
-				fmt.Println("attack")
-				g.player.Attack()
-			}
+		switch event.(type) {
 		case *sdl.QuitEvent:
 			println("Quit")
 			return 0, false
 		}
 	}
+
+	if keyState[sdl.SCANCODE_LEFT] != 0 {
+		g.player.Move(false)
+	}
+	if keyState[sdl.SCANCODE_RIGHT] != 0 {
+		g.player.Move(true)
+	}
+	if keyState[sdl.SCANCODE_LEFT] == 0 && keyState[sdl.SCANCODE_RIGHT] == 0 {
+		g.player.ResetVX()
+	}
+	if keyState[sdl.SCANCODE_SPACE] != 0 {
+		g.player.Jump()
+	}
+	if keyState[sdl.SCANCODE_LCTRL] != 0 {
+		g.player.Attack()
+	}
+
 	g.player.Update(g.platforms)
 	if g.player.IsDead() {
 		return common.Over, true

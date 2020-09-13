@@ -41,16 +41,16 @@ type standingState struct {
 func (s *standingState) move(right bool) {
 	c := s.character
 	if right {
-		c.VX = 1
+		c.vx = 1
 	} else {
-		c.VX = -1
+		c.vx = -1
 	}
 	c.facedRight = right
 	c.setState(c.walking)
 }
 
 func (s *standingState) jump() {
-	s.character.VY = -constants.JumpSpeed
+	s.character.vy = -constants.JumpSpeed
 	s.character.setState(s.character.jumping)
 }
 
@@ -71,16 +71,16 @@ type walkingState struct {
 
 func (s *walkingState) move(right bool) {
 	if right {
-		s.character.VX = 1
+		s.character.vx = 1
 	} else {
-		s.character.VX = -1
+		s.character.vx = -1
 	}
 	s.character.facedRight = right
 }
 
 func (s *walkingState) jump() {
 	c := s.character
-	c.VY = -constants.JumpSpeed
+	c.vy = -constants.JumpSpeed
 	c.setState(c.jumping)
 }
 
@@ -94,7 +94,7 @@ func (s *walkingState) update(platforms []*platforms.Platform) {
 	for _, p := range platforms {
 		// If character collides with ANY platform from above
 		if c.isTouchingFromAbove(p) {
-			if c.VX == 0 {
+			if c.vx == 0 {
 				c.setState(c.standing)
 			}
 			return
@@ -114,9 +114,9 @@ type jumpingState struct {
 
 func (s *jumpingState) move(right bool) {
 	if right {
-		s.character.VX = 1
+		s.character.vx = 1
 	} else {
-		s.character.VX = -1
+		s.character.vx = -1
 	}
 	s.character.facedRight = right
 }
@@ -127,7 +127,7 @@ func (s *jumpingState) attack() {}
 
 func (s *jumpingState) update([]*platforms.Platform) {
 	s.character.time = 0
-	s.character.VY += constants.Gravity
+	s.character.vy += constants.Gravity
 	if s.character.isFalling() {
 		s.character.setState(s.character.falling)
 	}
@@ -144,9 +144,9 @@ type fallingState struct {
 
 func (s *fallingState) move(right bool) {
 	if right {
-		s.character.VX = 1
+		s.character.vx = 1
 	} else {
-		s.character.VX = -1
+		s.character.vx = -1
 	}
 	s.character.facedRight = right
 }
@@ -158,12 +158,12 @@ func (s *fallingState) attack() {}
 func (s *fallingState) update(platforms []*platforms.Platform) {
 	c := s.character
 	c.time = 0
-	c.VY += constants.Gravity
+	c.vy += constants.Gravity
 	for _, p := range platforms {
 		if c.isTouchingFromAbove(p) {
 			c.Y = p.Y - p.H/2 - c.H
-			c.VY = 0
-			if c.VX == 0 {
+			c.vy = 0
+			if c.vx == 0 {
 				c.setState(c.standing)
 			} else {
 				c.setState(c.walking)
@@ -189,7 +189,7 @@ func (s *attackingState) attack() {}
 
 func (s *attackingState) update(platforms []*platforms.Platform) {
 	c := s.character
-	c.ResetVX()
+	c.vx = 0
 	c.time++
 	if c.time > len(s.getAnimationRects())*10 {
 		c.setState(c.standing)
@@ -205,8 +205,8 @@ type Character struct {
 	Y            int32
 	W            int32
 	H            int32
-	VY           float32
-	VX           float32
+	vy           float32
+	vx           float32
 	texture      *sdl.Texture
 	time         int
 	facedRight   bool
@@ -246,8 +246,8 @@ func NewCharacter(w, h int32, texture *sdl.Texture) *Character {
 		Y:          0,
 		W:          w,
 		H:          h,
-		VX:         0,
-		VY:         0,
+		vx:         0,
+		vy:         0,
 		texture:    texture,
 		time:       0,
 		facedRight: true,
@@ -282,22 +282,18 @@ func NewCharacter(w, h int32, texture *sdl.Texture) *Character {
 }
 
 func (c *Character) Update(platforms []*platforms.Platform) {
-	c.X += int32(c.VX)
-	c.Y += int32(c.VY)
+	c.X += int32(c.vx)
+	c.Y += int32(c.vy)
 	c.currentState.update(platforms)
 }
 
 func (c *Character) reset() {
 	c.X, c.Y = 0, 0
-	c.VX, c.VY = 0, 0
+	c.vx, c.vy = 0, 0
 }
 
 func (c *Character) ResetVX() {
-	c.VX = 0
-}
-
-func (c *Character) ResetVY() {
-	c.VY = 0
+	c.vx = 0
 }
 
 func (c *Character) isTouchingFromAbove(p *platforms.Platform) bool {
@@ -305,11 +301,11 @@ func (c *Character) isTouchingFromAbove(p *platforms.Platform) bool {
 }
 
 func (c *Character) isFalling() bool {
-	return c.VY > 0
+	return c.vy > 0
 }
 
 func (c *Character) isJumpingUpward() bool {
-	return c.VY < 0
+	return c.vy < 0
 }
 
 func (c *Character) IsDead() bool {
