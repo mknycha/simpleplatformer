@@ -6,6 +6,7 @@ const (
 	Gravity         = 0.05
 	JumpSpeed       = 4
 	CharacterXSpeed = 1
+	SwooshXShift    = 6
 )
 
 const (

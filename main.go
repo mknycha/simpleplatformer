@@ -89,6 +89,12 @@ func main() {
 	}
 	defer texCharacters.Destroy()
 
+	texSwoosh, err := img.LoadTexture(renderer, "assets/swoosh.png")
+	if err != nil {
+		log.Fatalf("could not load swoosh texture: %v", err)
+	}
+	defer texSwoosh.Destroy()
+
 	keyState := sdl.GetKeyboardState()
 
 	running := true
@@ -99,7 +105,7 @@ func main() {
 				switch e := event.(type) {
 				case *sdl.KeyboardEvent:
 					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-						g = game.NewGame(texCharacters, texBackground)
+						g = game.NewGame(texCharacters, texBackground, texSwoosh)
 						state = common.Play
 					}
 				case *sdl.QuitEvent:
@@ -118,7 +124,7 @@ func main() {
 				switch e := event.(type) {
 				case *sdl.KeyboardEvent:
 					if sdl.K_SPACE == e.Keysym.Sym && e.State == sdl.PRESSED {
-						g = game.NewGame(texCharacters, texBackground)
+						g = game.NewGame(texCharacters, texBackground, texSwoosh)
 						state = common.Play
 					}
 				case *sdl.QuitEvent:

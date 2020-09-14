@@ -55,6 +55,13 @@ func (s *standingState) jump() {
 }
 
 func (s *standingState) attack() {
+	c := s.character
+	posX := c.X - constants.SwooshXShift
+	if c.facedRight {
+		posX = c.X + constants.SwooshXShift
+	}
+	swoosh := newSwoosh(c.swooshTexture, posX, c.Y, c.facedRight)
+	c.swooshes = append(c.swooshes, swoosh)
 	s.character.setState(s.character.attacking)
 }
 
@@ -85,6 +92,13 @@ func (s *walkingState) jump() {
 }
 
 func (s *walkingState) attack() {
+	c := s.character
+	posX := c.X - constants.SwooshXShift
+	if c.facedRight {
+		posX = c.X + constants.SwooshXShift
+	}
+	swoosh := newSwoosh(c.swooshTexture, posX, c.Y, c.facedRight)
+	c.swooshes = append(c.swooshes, swoosh)
 	s.character.setState(s.character.attacking)
 }
 
@@ -201,16 +215,18 @@ func (s *attackingState) getAnimationRects() []*sdl.Rect {
 }
 
 type Character struct {
-	X            int32
-	Y            int32
-	W            int32
-	H            int32
-	vy           float32
-	vx           float32
-	texture      *sdl.Texture
-	time         int
-	facedRight   bool
-	currentState characterState
+	X             int32
+	Y             int32
+	W             int32
+	H             int32
+	vy            float32
+	vx            float32
+	texture       *sdl.Texture
+	swooshTexture *sdl.Texture
+	time          int
+	facedRight    bool
+	currentState  characterState
+	swooshes      []*swoosh
 
 	standing  characterState
 	walking   characterState
@@ -224,7 +240,7 @@ func (c *Character) setState(s characterState) {
 	c.currentState = s
 }
 
-func NewCharacter(w, h int32, texture *sdl.Texture) *Character {
+func NewCharacter(w, h int32, characterTexture *sdl.Texture, swooshTexture *sdl.Texture) *Character {
 	standingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{{0, 1}})
 	walkingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{
 		{1, 1},
@@ -242,15 +258,17 @@ func NewCharacter(w, h int32, texture *sdl.Texture) *Character {
 	})
 
 	c := Character{
-		X:          0,
-		Y:          0,
-		W:          w,
-		H:          h,
-		vx:         0,
-		vy:         0,
-		texture:    texture,
-		time:       0,
-		facedRight: true,
+		X:             0,
+		Y:             0,
+		W:             w,
+		H:             h,
+		vx:            0,
+		vy:            0,
+		texture:       characterTexture,
+		swooshTexture: swooshTexture,
+		time:          0,
+		facedRight:    true,
+		swooshes:      []*swoosh{},
 	}
 	standingPlayerState := standingState{
 		character:      &c,
@@ -285,6 +303,7 @@ func (c *Character) Update(platforms []*platforms.Platform) {
 	c.X += int32(c.vx)
 	c.Y += int32(c.vy)
 	c.currentState.update(platforms)
+	c.swooshes = updateSwooshes(c.swooshes)
 }
 
 func (c *Character) reset() {
@@ -348,5 +367,9 @@ func (c *Character) Draw(renderer *sdl.Renderer) {
 	err := renderer.CopyEx(c.texture, src, dst, 0, nil, flip)
 	if err != nil {
 		log.Fatalf("could not copy Character texture: %v", err)
+	}
+	// Draw swooshes made by character
+	for _, s := range c.swooshes {
+		s.draw(renderer)
 	}
 }

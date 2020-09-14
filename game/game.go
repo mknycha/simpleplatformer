@@ -10,8 +10,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture) *Game {
-	player := characters.NewCharacter(constants.TileDestWidth, constants.TileDestHeight, texCharacters)
+func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *sdl.Texture) *Game {
+	player := characters.NewCharacter(constants.TileDestWidth, constants.TileDestHeight, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
 
 	return &Game{player, platforms, 0}
