@@ -1,13 +1,14 @@
 package constants
 
 const (
-	WindowWidth     = 860
-	WindowHeight    = 510
-	Gravity         = 0.05
-	JumpSpeed       = 4
-	CharacterXSpeed = 1
-	SwooshXSpeed    = 1
-	SwooshXShift    = 10
+	WindowWidth         = 860
+	WindowHeight        = 510
+	Gravity             = 0.05
+	JumpSpeed           = 4
+	CharacterXSpeed     = 1
+	CharacterStaminaMax = 30
+	SwooshXSpeed        = 1
+	SwooshXShift        = 10
 )
 
 const (

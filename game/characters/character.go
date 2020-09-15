@@ -56,8 +56,11 @@ func (s *standingState) jump() {
 
 func (s *standingState) attack() {
 	c := s.character
-	c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
-	s.character.setState(s.character.attacking)
+	if c.CanAttack() {
+		c.stamina = 0
+		c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
+		s.character.setState(s.character.attacking)
+	}
 }
 
 func (s *standingState) update([]*platforms.Platform) {}
@@ -88,8 +91,11 @@ func (s *walkingState) jump() {
 
 func (s *walkingState) attack() {
 	c := s.character
-	c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
-	s.character.setState(s.character.attacking)
+	if c.CanAttack() {
+		c.stamina = 0
+		c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
+		s.character.setState(s.character.attacking)
+	}
 }
 
 func (s *walkingState) update(platforms []*platforms.Platform) {
@@ -194,6 +200,7 @@ func (s *attackingState) attack() {}
 func (s *attackingState) update(platforms []*platforms.Platform) {
 	c := s.character
 	c.vx = 0
+	c.stamina = 0
 	c.time++
 	if c.time > len(s.getAnimationRects())*10 {
 		c.setState(c.standing)
@@ -217,6 +224,7 @@ type Character struct {
 	facedRight    bool
 	currentState  characterState
 	swooshes      []*swoosh
+	stamina       int
 
 	standing  characterState
 	walking   characterState
@@ -256,6 +264,7 @@ func NewCharacter(w, h int32, characterTexture *sdl.Texture, swooshTexture *sdl.
 		vy:            0,
 		texture:       characterTexture,
 		swooshTexture: swooshTexture,
+		stamina:       constants.CharacterStaminaMax,
 		time:          0,
 		facedRight:    true,
 		swooshes:      []*swoosh{},
@@ -292,8 +301,15 @@ func NewCharacter(w, h int32, characterTexture *sdl.Texture, swooshTexture *sdl.
 func (c *Character) Update(platforms []*platforms.Platform) {
 	c.X += int32(c.vx)
 	c.Y += int32(c.vy)
+	if !c.CanAttack() {
+		c.stamina++
+	}
 	c.currentState.update(platforms)
 	c.swooshes = updateSwooshes(c.swooshes)
+}
+
+func (c *Character) CanAttack() bool {
+	return c.stamina >= constants.CharacterStaminaMax
 }
 
 func (c *Character) reset() {
