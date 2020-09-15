@@ -55,12 +55,7 @@ func (s *standingState) jump() {
 }
 
 func (s *standingState) attack() {
-	c := s.character
-	if c.CanAttack() {
-		c.stamina = 0
-		c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
-		s.character.setState(s.character.attacking)
-	}
+	conditionalSwitchToAttackingState(s.character)
 }
 
 func (s *standingState) update([]*platforms.Platform) {}
@@ -90,12 +85,7 @@ func (s *walkingState) jump() {
 }
 
 func (s *walkingState) attack() {
-	c := s.character
-	if c.CanAttack() {
-		c.stamina = 0
-		c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
-		s.character.setState(s.character.attacking)
-	}
+	conditionalSwitchToAttackingState(s.character)
 }
 
 func (s *walkingState) update(platforms []*platforms.Platform) {
