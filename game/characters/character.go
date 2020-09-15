@@ -56,12 +56,7 @@ func (s *standingState) jump() {
 
 func (s *standingState) attack() {
 	c := s.character
-	posX := c.X - constants.SwooshXShift
-	if c.facedRight {
-		posX = c.X + constants.SwooshXShift
-	}
-	swoosh := newSwoosh(c.swooshTexture, posX, c.Y, c.facedRight)
-	c.swooshes = append(c.swooshes, swoosh)
+	c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
 	s.character.setState(s.character.attacking)
 }
 
@@ -93,12 +88,7 @@ func (s *walkingState) jump() {
 
 func (s *walkingState) attack() {
 	c := s.character
-	posX := c.X - constants.SwooshXShift
-	if c.facedRight {
-		posX = c.X + constants.SwooshXShift
-	}
-	swoosh := newSwoosh(c.swooshTexture, posX, c.Y, c.facedRight)
-	c.swooshes = append(c.swooshes, swoosh)
+	c.swooshes = append(c.swooshes, newSwooshForCharacter(c))
 	s.character.setState(s.character.attacking)
 }
 

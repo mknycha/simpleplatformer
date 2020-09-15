@@ -31,6 +31,23 @@ type swoosh struct {
 	destroyed  bool
 }
 
+func moveAllRectsByX(rects []*sdl.Rect, shiftX int32) []*sdl.Rect {
+	results := []*sdl.Rect{}
+	for _, r := range rects {
+		r.X += shiftX
+		results = append(results, r)
+	}
+	return results
+}
+
+func newSwooshForCharacter(c *Character) *swoosh {
+	posX := c.X - constants.SwooshXShift
+	if c.facedRight {
+		posX = c.X + constants.SwooshXShift
+	}
+	return newSwoosh(c.swooshTexture, posX, c.Y, c.facedRight)
+}
+
 func newSwoosh(tex *sdl.Texture, x, y int32, facedRight bool) *swoosh {
 	rects := newCharacterAnimationRects([]common.RelativeRectPosition{
 		{0, 0},
@@ -38,13 +55,14 @@ func newSwoosh(tex *sdl.Texture, x, y int32, facedRight bool) *swoosh {
 		{2, 0},
 		{3, 0},
 	})
+	rects = moveAllRectsByX(rects, 1)
 	return &swoosh{
 		time:       0,
 		texture:    tex,
 		x:          x,
 		y:          y,
-		w:          32,
-		h:          32,
+		w:          constants.CharacterDestWidth,
+		h:          constants.CharacterDestHeight,
 		rects:      rects,
 		facedRight: facedRight,
 		destroyed:  false,
@@ -53,6 +71,11 @@ func newSwoosh(tex *sdl.Texture, x, y int32, facedRight bool) *swoosh {
 
 func (s *swoosh) update() {
 	s.time++
+	if s.facedRight {
+		s.x += constants.SwooshXSpeed
+	} else {
+		s.x -= constants.SwooshXSpeed
+	}
 	if s.time > len(s.rects)*10 {
 		s.destroyed = true
 	}
@@ -61,9 +84,7 @@ func (s *swoosh) update() {
 func (s *swoosh) draw(r *sdl.Renderer) {
 	displayedFrame := s.time / 10 % len(s.rects)
 	src := s.rects[displayedFrame]
-	characterDestWidth := constants.CharacterDestWidth
-	characterDestHeight := constants.CharacterDestHeight
-	dst := &sdl.Rect{s.x - characterDestWidth/2, s.y - characterDestHeight/2, characterDestWidth, characterDestHeight}
+	dst := &sdl.Rect{s.x - s.w/2, s.y - s.h/2, s.w, s.h}
 	var flip sdl.RendererFlip
 	if s.facedRight {
 		flip = sdl.FLIP_NONE
