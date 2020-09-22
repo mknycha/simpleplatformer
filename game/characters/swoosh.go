@@ -27,6 +27,7 @@ type swoosh struct {
 	y          int32
 	w          int32
 	h          int32
+	vx         float32
 	facedRight bool
 	destroyed  bool
 }
@@ -56,6 +57,10 @@ func newSwoosh(tex *sdl.Texture, x, y int32, facedRight bool) *swoosh {
 		{3, 0},
 	})
 	rects = moveAllRectsByX(rects, 1)
+	vx := -constants.SwooshVX
+	if facedRight {
+		vx = constants.SwooshVX
+	}
 	return &swoosh{
 		time:       0,
 		texture:    tex,
@@ -63,6 +68,7 @@ func newSwoosh(tex *sdl.Texture, x, y int32, facedRight bool) *swoosh {
 		y:          y,
 		w:          constants.CharacterDestWidth,
 		h:          constants.CharacterDestHeight,
+		vx:         vx,
 		rects:      rects,
 		facedRight: facedRight,
 		destroyed:  false,
@@ -71,11 +77,7 @@ func newSwoosh(tex *sdl.Texture, x, y int32, facedRight bool) *swoosh {
 
 func (s *swoosh) update() {
 	s.time++
-	if s.facedRight {
-		s.x += constants.SwooshXSpeed
-	} else {
-		s.x -= constants.SwooshXSpeed
-	}
+	s.x += int32(s.vx)
 	if s.time > len(s.rects)*10 {
 		s.destroyed = true
 	}

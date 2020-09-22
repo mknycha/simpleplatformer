@@ -11,15 +11,41 @@ import (
 )
 
 func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *sdl.Texture) *Game {
-	player := characters.NewCharacter(constants.TileDestWidth, constants.TileDestHeight, texCharacters, texSwoosh)
+	tileDestWidth := constants.TileDestWidth
+	tileDestHeight := constants.TileDestHeight
+	player := characters.NewCharacter(tileDestWidth, tileDestHeight, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
+	snake := characters.NewSnake(
+		tileDestWidth*19,
+		tileDestHeight*10,
+		tileDestWidth,
+		tileDestHeight,
+		texCharacters,
+	)
+	enemies := []*characters.Character{snake}
 
-	return &Game{player, platforms, 0}
+	return &Game{player, platforms, enemies, 0}
+}
+
+// TODO: Move. Can we reuse here logic used for swooshes?
+func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Character) []*characters.Character {
+	result := []*characters.Character{}
+	for _, e := range enemies {
+		e.Update(platforms, enemies)
+		result = append(result, e)
+		// TODO: Destroy when fell off the screen
+		// if e.X == false {
+		// 	e.update()
+		// 	result = append(result, e)
+		// }
+	}
+	return result
 }
 
 type Game struct {
 	player       *characters.Character
 	platforms    []*platforms.Platform
+	enemies      []*characters.Character
 	shiftScreenX int32
 }
 
@@ -48,7 +74,10 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		g.player.Attack()
 	}
 
-	g.player.Update(g.platforms)
+	g.player.Update(g.platforms, g.enemies)
+	// TODO: How to filter out enemies by proximity?
+	// TODO: How to pass events? How can you address an event "attack the nearest oponnent"?
+	// g.player.UpdateAttack(g.enemies)
 	if g.player.IsDead() {
 		return common.Over, true
 	}
@@ -58,6 +87,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		for _, p := range g.platforms {
 			p.X--
 		}
+		for _, e := range g.enemies {
+			e.X--
+		}
 	}
 	if g.player.IsCloseToLeftScreenEdge() && g.shiftScreenX > 0 {
 		g.player.X += constants.CharacterXSpeed
@@ -65,15 +97,24 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		for _, p := range g.platforms {
 			p.X++
 		}
+		for _, e := range g.enemies {
+			e.X++
+		}
 	}
 	if g.player.X < 0 {
 		g.player.X = 0
 	}
 
+	// TODO: Can this method be defined on game?
+	g.enemies = updateEnemies(g.platforms, g.enemies)
+
 	r.Clear()
 
 	for _, p := range g.platforms {
 		p.Draw(r)
+	}
+	for _, e := range g.enemies {
+		e.Draw(r)
 	}
 	g.player.Draw(r)
 

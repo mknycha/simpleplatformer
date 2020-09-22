@@ -7,7 +7,7 @@ const (
 	JumpSpeed           = 4
 	CharacterXSpeed     = 1
 	CharacterStaminaMax = 30
-	SwooshXSpeed        = 1
+	SwooshVX            = float32(1.0)
 	SwooshXShift        = 10
 )
 
