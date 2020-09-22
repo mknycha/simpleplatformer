@@ -273,7 +273,7 @@ func (c *Character) setState(s characterState) {
 	c.currentState = s
 }
 
-func NewCharacter(w, h int32, characterTexture *sdl.Texture, swooshTexture *sdl.Texture) *Character {
+func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture *sdl.Texture) *Character {
 	standingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{{0, 1}})
 	walkingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{
 		{1, 1},
@@ -289,12 +289,16 @@ func NewCharacter(w, h int32, characterTexture *sdl.Texture, swooshTexture *sdl.
 		{12, 1},
 		{13, 1},
 	})
+	deadPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{
+		{9, 1},
+		{10, 1},
+	})
 
 	c := Character{
-		X:             0,
-		Y:             0,
-		W:             w,
-		H:             h,
+		X:             x,
+		Y:             y,
+		W:             constants.TileDestWidth,
+		H:             constants.TileDestHeight,
 		vx:            0,
 		vy:            0,
 		texture:       characterTexture,
@@ -324,11 +328,85 @@ func NewCharacter(w, h int32, characterTexture *sdl.Texture, swooshTexture *sdl.
 		character:      &c,
 		animationRects: attackingPlayerRects,
 	}
+	deadPlayerState := deadState{
+		character:      &c,
+		animationRects: deadPlayerRects,
+	}
 	c.standing = &standingPlayerState
 	c.walking = &walkingPlayerState
 	c.jumping = &jumpingPlayerState
 	c.falling = &fallingPlayerState
 	c.attacking = &attackingPlayerState
+	c.dead = &deadPlayerState
+	c.setState(c.falling)
+	return &c
+}
+
+func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture *sdl.Texture) *Character {
+	standingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{{0, 0}})
+	walkingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{
+		{1, 1},
+		{2, 1},
+		{3, 1},
+		{4, 1},
+	})
+	jumpingUpwardEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{{6, 0}})
+	fallingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{{7, 0}})
+	attackingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{
+		{12, 0},
+		{11, 0},
+		{12, 0},
+		{13, 0},
+	})
+	deadEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{
+		{9, 0},
+		{10, 0},
+	})
+
+	c := Character{
+		X:             x,
+		Y:             y,
+		W:             constants.TileDestWidth,
+		H:             constants.TileDestHeight,
+		vx:            0,
+		vy:            0,
+		texture:       characterTexture,
+		swooshTexture: swooshTexture,
+		stamina:       constants.CharacterStaminaMax,
+		time:          0,
+		facedRight:    true,
+		swooshes:      []*swoosh{},
+	}
+	standingEnemyState := standingState{
+		character:      &c,
+		animationRects: standingEnemyRects,
+	}
+	walkingEnemyState := walkingState{
+		character:      &c,
+		animationRects: walkingEnemyRects,
+	}
+	jumpingEnemyState := jumpingState{
+		character:      &c,
+		animationRects: jumpingUpwardEnemyRects,
+	}
+	fallingEnemyState := fallingState{
+		character:      &c,
+		animationRects: fallingEnemyRects,
+	}
+	attackingEnemyState := attackingState{
+		character:      &c,
+		animationRects: attackingEnemyRects,
+	}
+	deadEnemyState := deadState{
+		character:      &c,
+		animationRects: deadEnemyRects,
+	}
+	c.standing = &standingEnemyState
+	c.walking = &walkingEnemyState
+	c.jumping = &jumpingEnemyState
+	c.falling = &fallingEnemyState
+	c.attacking = &attackingEnemyState
+	c.dead = &deadEnemyState
 	c.setState(c.falling)
 	return &c
 }

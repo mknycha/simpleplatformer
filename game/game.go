@@ -13,25 +13,24 @@ import (
 func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *sdl.Texture) *Game {
 	tileDestWidth := constants.TileDestWidth
 	tileDestHeight := constants.TileDestHeight
-	player := characters.NewCharacter(tileDestWidth, tileDestHeight, texCharacters, texSwoosh)
+	player := characters.NewPlayerCharacter(0, 0, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
-	snake := characters.NewSnake(
+	enemy := characters.NewEnemyCharacter(
 		tileDestWidth*19,
 		tileDestHeight*10,
-		tileDestWidth,
-		tileDestHeight,
 		texCharacters,
+		texSwoosh,
 	)
-	enemies := []*characters.Character{snake}
+	enemies := []*characters.Character{enemy}
 
 	return &Game{player, platforms, enemies, 0}
 }
 
 // TODO: Move. Can we reuse here logic used for swooshes?
-func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Character) []*characters.Character {
+func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Character, player *characters.Character) []*characters.Character {
 	result := []*characters.Character{}
 	for _, e := range enemies {
-		e.Update(platforms, enemies)
+		e.Update(platforms, []*characters.Character{player})
 		result = append(result, e)
 		// TODO: Destroy when fell off the screen
 		// if e.X == false {
@@ -106,7 +105,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	}
 
 	// TODO: Can this method be defined on game?
-	g.enemies = updateEnemies(g.platforms, g.enemies)
+	g.enemies = updateEnemies(g.platforms, g.enemies, g.player)
 
 	r.Clear()
 
