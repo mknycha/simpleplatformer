@@ -32,6 +32,8 @@ func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Charac
 	for _, e := range enemies {
 		e.Update(platforms, []*characters.Character{player})
 		result = append(result, e)
+		// TODO: Temp
+		e.StopMoving()
 		// TODO: Destroy when fell off the screen
 		// if e.X == false {
 		// 	e.update()
@@ -64,7 +66,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		g.player.Move(true)
 	}
 	if keyState[sdl.SCANCODE_LEFT] == 0 && keyState[sdl.SCANCODE_RIGHT] == 0 {
-		g.player.ResetVX()
+		g.player.StopMoving()
 	}
 	if keyState[sdl.SCANCODE_SPACE] != 0 {
 		g.player.Jump()

@@ -8,6 +8,16 @@ func conditionalSwitchToAttackingState(c *Character) {
 	c.setState(c.attacking)
 }
 
+func setVelocityAndSwitchToHitState(c *Character, newVX float32) {
+	c.facedRight = true
+	if newVX > 0 {
+		c.facedRight = false
+	}
+	c.vx = newVX
+	c.vy = -2
+	c.setState(c.hit)
+}
+
 func setVelocityAndSwitchToDeadState(c *Character, newVX float32) {
 	c.vx = newVX
 	c.vy = -2
