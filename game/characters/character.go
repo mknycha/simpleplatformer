@@ -345,10 +345,10 @@ func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture
 func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture *sdl.Texture) *Character {
 	standingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{{0, 0}})
 	walkingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{
-		{1, 1},
-		{2, 1},
-		{3, 1},
-		{4, 1},
+		{1, 0},
+		{2, 0},
+		{3, 0},
+		{4, 0},
 	})
 	jumpingUpwardEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{{6, 0}})
 	fallingEnemyRects := newCharacterAnimationRects([]common.RelativeRectPosition{{7, 0}})
