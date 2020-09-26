@@ -5,7 +5,7 @@ const (
 	WindowHeight        = 510
 	Gravity             = 0.05
 	JumpSpeed           = 4
-	CharacterXSpeed     = 1
+	CharacterVX         = 1
 	CharacterStaminaMax = 30
 	SwooshVX            = float32(1.0)
 	SwooshXShift        = 10

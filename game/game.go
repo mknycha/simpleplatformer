@@ -58,10 +58,10 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	}
 
 	if keyState[sdl.SCANCODE_LEFT] != 0 {
-		g.player.Move(-constants.CharacterXSpeed)
+		g.player.Move(-constants.CharacterVX)
 	}
 	if keyState[sdl.SCANCODE_RIGHT] != 0 {
-		g.player.Move(constants.CharacterXSpeed)
+		g.player.Move(constants.CharacterVX)
 	}
 	if keyState[sdl.SCANCODE_LEFT] == 0 && keyState[sdl.SCANCODE_RIGHT] == 0 {
 		g.player.Move(0)
@@ -78,7 +78,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		return common.Over, true
 	}
 	if g.player.IsCloseToRightScreenEdge() {
-		g.player.X -= constants.CharacterXSpeed
+		g.player.X -= constants.CharacterVX
 		g.shiftScreenX++
 		for _, p := range g.platforms {
 			p.X--
@@ -88,7 +88,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		}
 	}
 	if g.player.IsCloseToLeftScreenEdge() && g.shiftScreenX > 0 {
-		g.player.X += constants.CharacterXSpeed
+		g.player.X += constants.CharacterVX
 		g.shiftScreenX--
 		for _, p := range g.platforms {
 			p.X++
