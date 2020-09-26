@@ -11,6 +11,8 @@ const (
 	SwooshXShift        = 10
 	DefaultEnemyHealth  = 1
 	DefaultPlayerHealth = 1
+	HitStateLength      = 70
+	CharacterVYWhenHit  = -2
 )
 
 const (

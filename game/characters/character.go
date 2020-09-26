@@ -257,7 +257,7 @@ func (s *hitState) update(platforms []*platforms.Platform) {
 			c.vy = 0
 		}
 	}
-	if c.time > 70 {
+	if c.time > constants.HitStateLength {
 		c.resetVX()
 		c.setState(c.falling)
 	}

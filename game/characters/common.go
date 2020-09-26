@@ -1,5 +1,9 @@
 package characters
 
+import (
+	"simpleplatformer/constants"
+)
+
 func conditionalSwitchToAttackingState(c *Character) {
 	if !c.CanAttack() {
 		return
@@ -14,14 +18,14 @@ func prepareAndSetHitState(c *Character, newVX float32) {
 		c.facedRight = false
 	}
 	c.vx = newVX
-	c.vy = -2
+	c.vy = constants.CharacterVYWhenHit
 	c.health--
 	c.setState(c.hit)
 }
 
 func setVelocityAndSwitchToDeadState(c *Character, newVX float32) {
 	c.vx = newVX
-	c.vy = -2
+	c.vy = constants.CharacterVYWhenHit
 	c.setState(c.dead)
 }
 
