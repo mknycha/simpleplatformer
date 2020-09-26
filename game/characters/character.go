@@ -59,7 +59,7 @@ func (s *standingState) attack() {
 }
 
 func (s *standingState) hit(newVX float32) {
-	setVelocityAndSwitchToHitState(s.character, newVX)
+	prepareAndSetHitState(s.character, newVX)
 }
 
 func (s *standingState) kill(newVX float32) {
@@ -92,7 +92,7 @@ func (s *walkingState) attack() {
 }
 
 func (s *walkingState) hit(newVX float32) {
-	setVelocityAndSwitchToHitState(s.character, newVX)
+	prepareAndSetHitState(s.character, newVX)
 }
 
 func (s *walkingState) kill(newVX float32) {
@@ -132,7 +132,7 @@ func (s *jumpingState) jump() {}
 func (s *jumpingState) attack() {}
 
 func (s *jumpingState) hit(newVX float32) {
-	setVelocityAndSwitchToHitState(s.character, newVX)
+	prepareAndSetHitState(s.character, newVX)
 }
 
 func (s *jumpingState) kill(newVX float32) {
@@ -165,7 +165,7 @@ func (s *fallingState) jump() {}
 func (s *fallingState) attack() {}
 
 func (s *fallingState) hit(newVX float32) {
-	setVelocityAndSwitchToHitState(s.character, newVX)
+	prepareAndSetHitState(s.character, newVX)
 }
 
 func (s *fallingState) kill(newVX float32) {
@@ -205,7 +205,7 @@ func (s *attackingState) jump() {}
 func (s *attackingState) attack() {}
 
 func (s *attackingState) hit(newVX float32) {
-	setVelocityAndSwitchToHitState(s.character, newVX)
+	prepareAndSetHitState(s.character, newVX)
 }
 
 func (s *attackingState) kill(float32) {
@@ -245,6 +245,10 @@ func (s *hitState) kill(float32) {
 
 func (s *hitState) update(platforms []*platforms.Platform) {
 	c := s.character
+	if c.health <= 0 {
+		c.setState(c.dead)
+		return
+	}
 	c.time++
 	c.vy += constants.Gravity
 	for _, p := range platforms {
@@ -302,6 +306,7 @@ type Character struct {
 	currentState  characterState
 	swooshes      []*swoosh
 	stamina       int
+	health        int
 
 	standing  characterState
 	walking   characterState
@@ -348,6 +353,7 @@ func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture
 		texture:       characterTexture,
 		swooshTexture: swooshTexture,
 		stamina:       constants.CharacterStaminaMax,
+		health:        constants.DefaultPlayerHealth,
 		time:          0,
 		facedRight:    true,
 		swooshes:      []*swoosh{},
@@ -422,6 +428,7 @@ func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture 
 		texture:       characterTexture,
 		swooshTexture: swooshTexture,
 		stamina:       constants.CharacterStaminaMax,
+		health:        constants.DefaultEnemyHealth,
 		time:          0,
 		facedRight:    true,
 		swooshes:      []*swoosh{},

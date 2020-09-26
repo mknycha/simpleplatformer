@@ -9,6 +9,8 @@ const (
 	CharacterStaminaMax = 30
 	SwooshVX            = float32(1.0)
 	SwooshXShift        = 10
+	DefaultEnemyHealth  = 1
+	DefaultPlayerHealth = 1
 )
 
 const (
