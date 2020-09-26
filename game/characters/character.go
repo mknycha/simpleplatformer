@@ -26,7 +26,7 @@ func newCharacterAnimationRects(positions []common.RelativeRectPosition) []*sdl.
 }
 
 type characterState interface {
-	move(bool)
+	move(float32)
 	jump()
 	attack()
 	update([]*platforms.Platform)
@@ -40,14 +40,12 @@ type standingState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *standingState) move(right bool) {
-	c := s.character
-	if right {
-		c.vx = constants.CharacterXSpeed
-	} else {
-		c.vx = -constants.CharacterXSpeed
+func (s *standingState) move(newVX float32) {
+	if newVX == 0 {
+		return
 	}
-	c.facedRight = right
+	c := s.character
+	setVelocityAndSwitchFacedRight(c, newVX)
 	c.setState(c.walking)
 }
 
@@ -79,13 +77,8 @@ type walkingState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *walkingState) move(right bool) {
-	if right {
-		s.character.vx = constants.CharacterXSpeed
-	} else {
-		s.character.vx = -constants.CharacterXSpeed
-	}
-	s.character.facedRight = right
+func (s *walkingState) move(newVX float32) {
+	setVelocityAndSwitchFacedRight(s.character, newVX)
 }
 
 func (s *walkingState) jump() {
@@ -130,13 +123,8 @@ type jumpingState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *jumpingState) move(right bool) {
-	if right {
-		s.character.vx = constants.CharacterXSpeed
-	} else {
-		s.character.vx = -constants.CharacterXSpeed
-	}
-	s.character.facedRight = right
+func (s *jumpingState) move(newVX float32) {
+	setVelocityAndSwitchFacedRight(s.character, newVX)
 }
 
 func (s *jumpingState) jump() {}
@@ -168,13 +156,8 @@ type fallingState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *fallingState) move(right bool) {
-	if right {
-		s.character.vx = constants.CharacterXSpeed
-	} else {
-		s.character.vx = -constants.CharacterXSpeed
-	}
-	s.character.facedRight = right
+func (s *fallingState) move(newVX float32) {
+	setVelocityAndSwitchFacedRight(s.character, newVX)
 }
 
 func (s *fallingState) jump() {}
@@ -215,7 +198,7 @@ type attackingState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *attackingState) move(right bool) {}
+func (s *attackingState) move(float32) {}
 
 func (s *attackingState) jump() {}
 
@@ -248,7 +231,7 @@ type hitState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *hitState) move(right bool) {}
+func (s *hitState) move(float32) {}
 
 func (s *hitState) jump() {}
 
@@ -271,6 +254,7 @@ func (s *hitState) update(platforms []*platforms.Platform) {
 		}
 	}
 	if c.time > 70 {
+		c.resetVX()
 		c.setState(c.falling)
 	}
 }
@@ -284,7 +268,7 @@ type deadState struct {
 	animationRects []*sdl.Rect
 }
 
-func (s *deadState) move(right bool) {}
+func (s *deadState) move(float32) {}
 
 func (s *deadState) jump() {}
 
@@ -513,10 +497,8 @@ func (c *Character) reset() {
 	c.vx, c.vy = 0, 0
 }
 
-func (c *Character) StopMoving() {
-	if c.currentState != c.hit {
-		c.vx = 0
-	}
+func (c *Character) resetVX() {
+	c.vx = 0
 }
 
 func (c *Character) isTouchingFromAbove(p *platforms.Platform) bool {
@@ -543,8 +525,8 @@ func (c *Character) IsCloseToLeftScreenEdge() bool {
 	return c.X < (constants.TileDestWidth * 5)
 }
 
-func (c *Character) Move(right bool) {
-	c.currentState.move(right)
+func (c *Character) Move(newVX float32) {
+	c.currentState.move(newVX)
 }
 
 func (c *Character) Jump() {

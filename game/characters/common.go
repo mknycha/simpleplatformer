@@ -23,3 +23,12 @@ func setVelocityAndSwitchToDeadState(c *Character, newVX float32) {
 	c.vy = -2
 	c.setState(c.dead)
 }
+
+func setVelocityAndSwitchFacedRight(c *Character, newVX float32) {
+	if newVX > 0 {
+		c.facedRight = true
+	} else if newVX < 0 {
+		c.facedRight = false
+	}
+	c.vx = newVX
+}

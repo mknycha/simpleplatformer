@@ -32,8 +32,6 @@ func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Charac
 	for _, e := range enemies {
 		e.Update(platforms, []*characters.Character{player})
 		result = append(result, e)
-		// TODO: Temp
-		e.StopMoving()
 		// TODO: Destroy when fell off the screen
 		// if e.X == false {
 		// 	e.update()
@@ -60,13 +58,13 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	}
 
 	if keyState[sdl.SCANCODE_LEFT] != 0 {
-		g.player.Move(false)
+		g.player.Move(-constants.CharacterXSpeed)
 	}
 	if keyState[sdl.SCANCODE_RIGHT] != 0 {
-		g.player.Move(true)
+		g.player.Move(constants.CharacterXSpeed)
 	}
 	if keyState[sdl.SCANCODE_LEFT] == 0 && keyState[sdl.SCANCODE_RIGHT] == 0 {
-		g.player.StopMoving()
+		g.player.Move(0)
 	}
 	if keyState[sdl.SCANCODE_SPACE] != 0 {
 		g.player.Jump()
@@ -76,9 +74,6 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	}
 
 	g.player.Update(g.platforms, g.enemies)
-	// TODO: How to filter out enemies by proximity?
-	// TODO: How to pass events? How can you address an event "attack the nearest oponnent"?
-	// g.player.UpdateAttack(g.enemies)
 	if g.player.IsDead() {
 		return common.Over, true
 	}
@@ -106,7 +101,6 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		g.player.X = 0
 	}
 
-	// TODO: Can this method be defined on game?
 	g.enemies = updateEnemies(g.platforms, g.enemies, g.player)
 
 	r.Clear()
