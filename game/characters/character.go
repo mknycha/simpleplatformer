@@ -532,6 +532,10 @@ func (c *Character) IsCloseToLeftScreenEdge() bool {
 	return c.X < (constants.TileDestWidth * 5)
 }
 
+func (c *Character) IsFacedRight() bool {
+	return c.facedRight
+}
+
 func (c *Character) Move(newVX float32) {
 	c.currentState.move(newVX)
 }

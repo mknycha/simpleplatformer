@@ -22,8 +22,11 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 		texSwoosh,
 	)
 	enemies := []*characters.Character{enemy}
+	aiControllers := []*aiController{
+		newAiController(enemy),
+	}
 
-	return &Game{player, platforms, enemies, 0}
+	return &Game{player, platforms, enemies, aiControllers, 0}
 }
 
 // TODO: Move. Can we reuse here logic used for swooshes?
@@ -42,10 +45,11 @@ func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Charac
 }
 
 type Game struct {
-	player       *characters.Character
-	platforms    []*platforms.Platform
-	enemies      []*characters.Character
-	shiftScreenX int32
+	player        *characters.Character
+	platforms     []*platforms.Platform
+	enemies       []*characters.Character
+	aiControllers []*aiController
+	shiftScreenX  int32
 }
 
 func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool) {
@@ -100,6 +104,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	if g.player.X < 0 {
 		g.player.X = 0
 	}
+
+	// TODO: Make a list
+	g.aiControllers[0].update()
 
 	g.enemies = updateEnemies(g.platforms, g.enemies, g.player)
 
