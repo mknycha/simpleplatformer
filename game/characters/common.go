@@ -23,6 +23,11 @@ func prepareAndSetHitState(c *Character, newVX float32) {
 	c.setState(c.hit)
 }
 
+func prepareAndSetShowingAlarmState(c *Character) {
+	c.vy = -2
+	c.setState(c.showingAlarm)
+}
+
 func setVelocityAndSwitchToDeadState(c *Character, newVX float32) {
 	c.vx = newVX
 	c.vy = constants.CharacterVYWhenHit

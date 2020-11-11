@@ -32,6 +32,7 @@ type characterState interface {
 	update([]*platforms.Platform)
 	hit(float32)
 	kill(float32)
+	showAlarm()
 	getAnimationRects() []*sdl.Rect
 }
 
@@ -66,6 +67,10 @@ func (s *standingState) kill(newVX float32) {
 	setVelocityAndSwitchToDeadState(s.character, newVX)
 }
 
+func (s *standingState) showAlarm() {
+	prepareAndSetShowingAlarmState(s.character)
+}
+
 func (s *standingState) update([]*platforms.Platform) {}
 
 func (s *standingState) getAnimationRects() []*sdl.Rect {
@@ -97,6 +102,10 @@ func (s *walkingState) hit(newVX float32) {
 
 func (s *walkingState) kill(newVX float32) {
 	setVelocityAndSwitchToDeadState(s.character, newVX)
+}
+
+func (s *walkingState) showAlarm() {
+	prepareAndSetShowingAlarmState(s.character)
 }
 
 func (s *walkingState) update(platforms []*platforms.Platform) {
@@ -139,6 +148,10 @@ func (s *jumpingState) kill(newVX float32) {
 	setVelocityAndSwitchToDeadState(s.character, newVX)
 }
 
+func (s *jumpingState) showAlarm() {
+	prepareAndSetShowingAlarmState(s.character)
+}
+
 func (s *jumpingState) update([]*platforms.Platform) {
 	s.character.time = 0
 	s.character.vy += constants.Gravity
@@ -171,6 +184,8 @@ func (s *fallingState) hit(newVX float32) {
 func (s *fallingState) kill(newVX float32) {
 	setVelocityAndSwitchToDeadState(s.character, newVX)
 }
+
+func (s *fallingState) showAlarm() {}
 
 func (s *fallingState) update(platforms []*platforms.Platform) {
 	c := s.character
@@ -212,6 +227,8 @@ func (s *attackingState) kill(float32) {
 	s.character.setState(s.character.dead)
 }
 
+func (s *attackingState) showAlarm() {}
+
 func (s *attackingState) update(platforms []*platforms.Platform) {
 	c := s.character
 	c.vx = 0
@@ -243,6 +260,8 @@ func (s *hitState) kill(float32) {
 	s.character.setState(s.character.dead)
 }
 
+func (s *hitState) showAlarm() {}
+
 func (s *hitState) update(platforms []*platforms.Platform) {
 	c := s.character
 	if c.health <= 0 {
@@ -267,6 +286,43 @@ func (s *hitState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+type showingAlarmState struct {
+	character      *Character
+	animationRects []*sdl.Rect
+}
+
+func (s *showingAlarmState) move(float32) {}
+
+func (s *showingAlarmState) jump() {}
+
+func (s *showingAlarmState) attack() {}
+
+func (s *showingAlarmState) hit(newVX float32) {
+	prepareAndSetHitState(s.character, newVX)
+}
+
+func (s *showingAlarmState) kill(float32) {
+	s.character.setState(s.character.dead)
+}
+
+func (s *showingAlarmState) showAlarm() {}
+
+func (s *showingAlarmState) update(platforms []*platforms.Platform) {
+	c := s.character
+	c.vy += constants.Gravity
+	for _, p := range platforms {
+		if c.isTouchingFromAbove(p) {
+			c.Y = p.Y - p.H/2 - c.H
+			c.vy = 0
+			c.setState(c.standing)
+		}
+	}
+}
+
+func (s *showingAlarmState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
+}
+
 type deadState struct {
 	character      *Character
 	animationRects []*sdl.Rect
@@ -281,6 +337,8 @@ func (s *deadState) attack() {}
 func (s *deadState) kill(float32) {}
 
 func (s *deadState) hit(float32) {}
+
+func (s *deadState) showAlarm() {}
 
 func (s *deadState) update(platforms []*platforms.Platform) {
 	c := s.character
@@ -308,13 +366,14 @@ type Character struct {
 	stamina       int
 	health        int
 
-	standing  characterState
-	walking   characterState
-	jumping   characterState
-	attacking characterState
-	hit       characterState
-	dead      characterState
-	falling   characterState
+	standing     characterState
+	walking      characterState
+	jumping      characterState
+	attacking    characterState
+	hit          characterState
+	dead         characterState
+	falling      characterState
+	showingAlarm characterState
 }
 
 func (c *Character) setState(s characterState) {
@@ -461,6 +520,10 @@ func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture 
 		character:      &c,
 		animationRects: hitEnemyRects,
 	}
+	showingAlarmEnemyState := showingAlarmState{
+		character:      &c,
+		animationRects: standingEnemyRects,
+	}
 	c.standing = &standingEnemyState
 	c.walking = &walkingEnemyState
 	c.jumping = &jumpingEnemyState
@@ -468,6 +531,7 @@ func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture 
 	c.attacking = &attackingEnemyState
 	c.hit = &hitEnemyState
 	c.dead = &deadEnemyState
+	c.showingAlarm = &showingAlarmEnemyState
 	c.setState(c.falling)
 	return &c
 }
@@ -536,6 +600,24 @@ func (c *Character) IsFacedRight() bool {
 	return c.facedRight
 }
 
+func (c *Character) IsCloseToPlatformLeftEdge(platforms []*platforms.Platform) bool {
+	for _, p := range platforms {
+		if c.isTouchingFromAbove(p) {
+			return c.X < (p.X - p.W/2 + c.W/2)
+		}
+	}
+	return false
+}
+
+func (c *Character) IsCloseToPlatformRightEdge(platforms []*platforms.Platform) bool {
+	for _, p := range platforms {
+		if c.isTouchingFromAbove(p) {
+			return c.X > (p.X + p.W/2 - c.W/2)
+		}
+	}
+	return false
+}
+
 func (c *Character) Move(newVX float32) {
 	c.currentState.move(newVX)
 }
@@ -554,6 +636,10 @@ func (c *Character) Hit(newVX float32) {
 
 func (c *Character) Kill(newVX float32) {
 	c.currentState.kill(newVX)
+}
+
+func (c *Character) ShowAlarm() {
+	c.currentState.showAlarm()
 }
 
 func (c *Character) Draw(renderer *sdl.Renderer) {

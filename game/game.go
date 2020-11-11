@@ -15,15 +15,22 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 	tileDestHeight := constants.TileDestHeight
 	player := characters.NewPlayerCharacter(0, 0, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
-	enemy := characters.NewEnemyCharacter(
-		tileDestWidth*19,
+	enemy1 := characters.NewEnemyCharacter(
+		tileDestWidth*10,
 		tileDestHeight*10,
 		texCharacters,
 		texSwoosh,
 	)
-	enemies := []*characters.Character{enemy}
-	aiControllers := []*aiController{
-		newAiController(enemy),
+	enemy2 := characters.NewEnemyCharacter(
+		tileDestWidth*6,
+		tileDestHeight*6,
+		texCharacters,
+		texSwoosh,
+	)
+	enemies := []*characters.Character{enemy1, enemy2}
+	aiControllers := []*aiController{}
+	for _, e := range enemies {
+		aiControllers = append(aiControllers, newAiController(e))
 	}
 
 	return &Game{player, platforms, enemies, aiControllers, 0}
@@ -105,8 +112,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		g.player.X = 0
 	}
 
-	// TODO: Make a list
-	g.aiControllers[0].update()
+	for _, ctrl := range g.aiControllers {
+		ctrl.update(g.platforms, g.player)
+	}
 
 	g.enemies = updateEnemies(g.platforms, g.enemies, g.player)
 
