@@ -550,10 +550,12 @@ func (c *Character) Update(platforms []*platforms.Platform, enemies []*Character
 func (c *Character) updateAttack(enemies []*Character) {
 	for _, s := range c.swooshes {
 		for _, e := range enemies {
-			if (s.x+s.w/2) > (e.X-e.W/2) && (s.x-s.w/2) < (e.X+e.W/2) {
-				e.Hit(s.vx)
-				s.destroyed = true
-				break
+			if (s.y+s.h/2) > (e.Y-e.H/2) && (s.y-s.h/2) < (e.Y+e.H/2) { // Touches enemy vertically
+				if (s.x+s.w/2) > (e.X-e.W/2) && (s.x-s.w/2) < (e.X+e.W/2) { // Touches enemy horizontally
+					e.Hit(s.vx)
+					s.destroyed = true
+					break
+				}
 			}
 		}
 	}
