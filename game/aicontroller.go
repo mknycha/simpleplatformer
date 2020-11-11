@@ -76,13 +76,44 @@ func (s *alarmedState) update(_ []*platforms.Platform, _ *characters.Character) 
 	s.ctrl.character.Move(0)
 	s.ctrl.character.ShowAlarm()
 	// If finished showing alarm
-	if s.ctrl.character.CanAttack() {
-		s.ctrl.setState(s.ctrl.patrollingStand)
+	if !s.ctrl.character.FinishedShowingAlarm() {
+		s.ctrl.setState(s.ctrl.chasing)
 	}
 }
 
 func (s *alarmedState) String() string {
 	return "alarmedState"
+}
+
+type chasingState struct {
+	ctrl *aiController
+}
+
+func (s *chasingState) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+	c := s.ctrl.character
+	if c.CharacterClose(playerCharacter) {
+		s.ctrl.cooldownTime = constants.AiCooldownTime
+		if c.CharacterWithinAttackRange(playerCharacter) {
+			c.Attack()
+		}
+		if playerCharacter.X-constants.CharacterDestWidth/2 > c.X && !c.IsCloseToPlatformRightEdge(platforms) {
+			c.Move(constants.CharacterVX)
+		} else if playerCharacter.X+constants.CharacterDestWidth/2 < c.X && !c.IsCloseToPlatformLeftEdge(platforms) {
+			c.Move(-constants.CharacterVX)
+		} else {
+			c.Move(0)
+		}
+	} else {
+		c.Move(0)
+		s.ctrl.cooldownTime--
+		if s.ctrl.cooldownTime == 0 {
+			s.ctrl.setState(s.ctrl.patrollingMoveLeft)
+		}
+	}
+}
+
+func (s *chasingState) String() string {
+	return "chasingState"
 }
 
 func newAiController(ch *characters.Character) *aiController {
@@ -95,20 +126,23 @@ func newAiController(ch *characters.Character) *aiController {
 	ctrl.patrollingMoveRight = &patrollingStateMoveRight{ctrl}
 	ctrl.patrollingMoveLeft = &patrollingStateMoveLeft{ctrl}
 	ctrl.alarmed = &alarmedState{ctrl}
+	ctrl.chasing = &chasingState{ctrl}
 	ctrl.setState(ctrl.patrollingMoveRight)
 	return ctrl
 }
 
 type aiController struct {
-	character *characters.Character
-	startX    int32
-	time      int
+	character    *characters.Character
+	startX       int32
+	time         int
+	cooldownTime int
 
 	currentPatrollingState patrollingStateInterface
 	patrollingStand        patrollingStateInterface
 	patrollingMoveRight    patrollingStateInterface
 	patrollingMoveLeft     patrollingStateInterface
 	alarmed                patrollingStateInterface
+	chasing                patrollingStateInterface
 }
 
 func (ai *aiController) setState(state patrollingStateInterface) {

@@ -10,9 +10,11 @@ const (
 	SwooshVX            = float32(1.0)
 	SwooshXShift        = 10
 	DefaultEnemyHealth  = 1
-	DefaultPlayerHealth = 1
+	DefaultPlayerHealth = 3
 	HitStateLength      = 70
 	CharacterVYWhenHit  = -2
+	CharacterSightLimit = 8 * CharacterDestWidth
+	AiCooldownTime      = 350
 )
 
 const (

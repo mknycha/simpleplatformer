@@ -618,6 +618,54 @@ func (c *Character) IsCloseToPlatformRightEdge(platforms []*platforms.Platform) 
 	return false
 }
 
+func (c *Character) FinishedShowingAlarm() bool {
+	return c.currentState == c.standing
+}
+
+// CharacterClose returns true if the other character is relatively close horizontally and on the same height
+func (c *Character) CharacterClose(otherCharacter *Character) bool {
+	if c.OnSameHeight(otherCharacter) {
+		if otherCharacter.X > c.X-(constants.CharacterSightLimit) || otherCharacter.X < c.X+constants.CharacterSightLimit {
+			return true
+		}
+	}
+	return false
+}
+
+// OnSameHeight returns false if other character is tile lower or tile higher than the character
+func (c *Character) OnSameHeight(otherCharacter *Character) bool {
+	if (c.Y > otherCharacter.Y+constants.CharacterDestHeight) || (c.Y < otherCharacter.Y-constants.CharacterDestHeight) {
+		return false
+	}
+	return true
+}
+
+// CharacterWithinAttackRange returns true if the other character is in range of the potential attack
+func (c *Character) CharacterWithinAttackRange(otherCharacter *Character) bool {
+	distance := otherCharacter.X - c.X
+	if distance > 0 && distance < constants.CharacterDestWidth {
+		return true
+	}
+	if distance < 0 && distance > -constants.CharacterDestWidth {
+		return true
+	}
+	return false
+}
+
+// CharacterWithinSight returns true if the other character can be seen
+func (c *Character) CharacterWithinSight(otherCharacter *Character) bool {
+	if c.OnSameHeight(otherCharacter) {
+		if c.IsFacedRight() {
+			if otherCharacter.X > c.X && otherCharacter.X < c.X+constants.CharacterSightLimit {
+				return true
+			}
+		} else if otherCharacter.X < c.X && otherCharacter.X > c.X-constants.CharacterSightLimit {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Character) Move(newVX float32) {
 	c.currentState.move(newVX)
 }
