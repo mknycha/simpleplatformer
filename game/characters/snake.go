@@ -28,6 +28,7 @@ func NewSnake(x, y int32, characterTexture *sdl.Texture) *Character {
 		time:          0,
 		facedRight:    true,
 		swooshes:      []*swoosh{},
+		characterType: enemySnake,
 	}
 	standingSnakeState := standingState{
 		character:      &c,
@@ -41,15 +42,38 @@ func NewSnake(x, y int32, characterTexture *sdl.Texture) *Character {
 		character:      &c,
 		animationRects: standingSnakeRects,
 	}
+	hitSnakeState := hitState{
+		character:      &c,
+		animationRects: standingSnakeRects,
+	}
 	deadSnakeState := deadState{
 		character:      &c,
 		animationRects: standingSnakeRects,
 	}
+	c.updateAttack = func(enemies []*Character) {
+		updateTouchAttack(&c, enemies)
+	}
 	c.standing = &standingSnakeState
 	c.walking = &walkingSnakeState
 	c.falling = &fallingSnakeState
+	c.hit = &hitSnakeState
 	c.dead = &deadSnakeState
 	c.setState(c.falling)
 
 	return &c
+}
+
+func updateTouchAttack(snake *Character, enemies []*Character) {
+	s := *snake
+	for _, e := range enemies {
+		if snake == e || e.IsEnemySnake() {
+			continue
+		}
+		if (s.Y+s.H/2) > (e.Y-e.H/2) && (s.Y-s.H/2) < (e.Y+e.H/2) { // Touches enemy vertically
+			if (s.X+s.W/2) > (e.X-e.W/2) && (s.X-s.W/2) < (e.X+e.W/2) { // Touches enemy horizontally
+				e.Hit(s.vx - e.vx)
+				break
+			}
+		}
+	}
 }

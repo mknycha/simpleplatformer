@@ -350,6 +350,14 @@ func (s *deadState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+type characterType int
+
+const (
+	player characterType = iota
+	enemySlasher
+	enemySnake
+)
+
 type Character struct {
 	X             int32
 	Y             int32
@@ -365,6 +373,8 @@ type Character struct {
 	swooshes      []*swoosh
 	stamina       int
 	health        int
+	updateAttack  func([]*Character)
+	characterType characterType
 
 	standing     characterState
 	walking      characterState
@@ -374,6 +384,21 @@ type Character struct {
 	dead         characterState
 	falling      characterState
 	showingAlarm characterState
+}
+
+// IsPlayer returns true if the character is of player type
+func (c *Character) IsPlayer() bool {
+	return c.characterType == player
+}
+
+// IsEnemySlasher returns true if the character is of enemy slasher type
+func (c *Character) IsEnemySlasher() bool {
+	return c.characterType == enemySlasher
+}
+
+// IsEnemySnake returns true if the character is of enemy snake type
+func (c *Character) IsEnemySnake() bool {
+	return c.characterType == enemySnake
 }
 
 func (c *Character) setState(s characterState) {
@@ -416,6 +441,10 @@ func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture
 		time:          0,
 		facedRight:    true,
 		swooshes:      []*swoosh{},
+		characterType: player,
+	}
+	c.updateAttack = func(enemies []*Character) {
+		updateSwooshAttack(&c, enemies)
 	}
 	standingPlayerState := standingState{
 		character:      &c,
@@ -491,6 +520,10 @@ func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture 
 		time:          0,
 		facedRight:    true,
 		swooshes:      []*swoosh{},
+		characterType: enemySlasher,
+	}
+	c.updateAttack = func(enemies []*Character) {
+		updateSwooshAttack(&c, enemies)
 	}
 	standingEnemyState := standingState{
 		character:      &c,
@@ -544,12 +577,14 @@ func (c *Character) Update(platforms []*platforms.Platform, enemies []*Character
 	}
 	c.currentState.update(platforms)
 	c.updateAttack(enemies)
-	c.swooshes = updateSwooshes(c.swooshes)
 }
 
-func (c *Character) updateAttack(enemies []*Character) {
+func updateSwooshAttack(c *Character, enemies []*Character) {
 	for _, s := range c.swooshes {
 		for _, e := range enemies {
+			if c == e {
+				continue
+			}
 			if (s.y+s.h/2) > (e.Y-e.H/2) && (s.y-s.h/2) < (e.Y+e.H/2) { // Touches enemy vertically
 				if (s.x+s.w/2) > (e.X-e.W/2) && (s.x-s.w/2) < (e.X+e.W/2) { // Touches enemy horizontally
 					e.Hit(s.vx)
@@ -559,6 +594,7 @@ func (c *Character) updateAttack(enemies []*Character) {
 			}
 		}
 	}
+	c.swooshes = updateSwooshes(c.swooshes)
 }
 
 func (c *Character) CanAttack() bool {

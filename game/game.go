@@ -15,24 +15,37 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 	tileDestHeight := constants.TileDestHeight
 	player := characters.NewPlayerCharacter(0, 0, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
-	enemy1 := characters.NewEnemyCharacter(
-		tileDestWidth*10,
+	slasher1 := characters.NewEnemyCharacter(
+		tileDestWidth*12,
 		tileDestHeight*10,
 		texCharacters,
 		texSwoosh,
 	)
-	enemy2 := characters.NewEnemyCharacter(
+	slasher2 := characters.NewEnemyCharacter(
 		tileDestWidth*6,
 		tileDestHeight*6,
 		texCharacters,
 		texSwoosh,
 	)
-	enemies := []*characters.Character{enemy1, enemy2}
-	aiControllers := []*aiController{}
+	snake1 := characters.NewSnake(
+		tileDestWidth*20,
+		tileDestHeight*10,
+		texCharacters,
+	)
+	snake2 := characters.NewSnake(
+		tileDestWidth*22,
+		tileDestHeight*10,
+		texCharacters,
+	)
+	enemies := []*characters.Character{slasher1, slasher2, snake1, snake2}
+	aiControllers := []aiEnemyController{}
 	for _, e := range enemies {
-		aiControllers = append(aiControllers, newAiController(e))
+		aiCtrl, err := newAiControllerForEnemy(e)
+		if err != nil {
+			log.Fatalf("could not create enemy controller: %v", err)
+		}
+		aiControllers = append(aiControllers, aiCtrl)
 	}
-
 	return &Game{player, platforms, enemies, aiControllers, 0}
 }
 
@@ -40,7 +53,7 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Character, player *characters.Character) []*characters.Character {
 	result := []*characters.Character{}
 	for _, e := range enemies {
-		e.Update(platforms, []*characters.Character{player})
+		e.Update(platforms, append(enemies, player))
 		result = append(result, e)
 		// TODO: Destroy when fell off the screen
 		// if e.X == false {
@@ -55,7 +68,7 @@ type Game struct {
 	player        *characters.Character
 	platforms     []*platforms.Platform
 	enemies       []*characters.Character
-	aiControllers []*aiController
+	aiControllers []aiEnemyController
 	shiftScreenX  int32
 }
 

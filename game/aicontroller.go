@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"log"
 	"simpleplatformer/constants"
 	"simpleplatformer/game/characters"
@@ -12,11 +13,16 @@ type patrollingStateInterface interface {
 	String() string // useful for debugging state
 }
 
-type patrollingStateMoveRight struct {
-	ctrl *aiController
+type aiEnemyController interface {
+	setState(state patrollingStateInterface)
+	update(platforms []*platforms.Platform, playerCharacter *characters.Character)
 }
 
-func (s *patrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+type slasherPatrollingStateMoveRight struct {
+	ctrl *aiEnemySlasherController
+}
+
+func (s *slasherPatrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
 	showAlarmIfNoticedPlayer(s.ctrl, playerCharacter)
 	ch := s.ctrl.character
 	ch.Move(constants.CharacterVX)
@@ -25,15 +31,15 @@ func (s *patrollingStateMoveRight) update(platforms []*platforms.Platform, playe
 	}
 }
 
-func (s *patrollingStateMoveRight) String() string {
+func (s *slasherPatrollingStateMoveRight) String() string {
 	return "patrollingStateMoveRight"
 }
 
-type patrollingStateMoveLeft struct {
-	ctrl *aiController
+type slasherPatrollingStateMoveLeft struct {
+	ctrl *aiEnemySlasherController
 }
 
-func (s *patrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherPatrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
 	showAlarmIfNoticedPlayer(s.ctrl, playerCharacter)
 	ch := s.ctrl.character
 	ch.Move(-constants.CharacterVX)
@@ -42,15 +48,15 @@ func (s *patrollingStateMoveLeft) update(platforms []*platforms.Platform, player
 	}
 }
 
-func (s *patrollingStateMoveLeft) String() string {
+func (s *slasherPatrollingStateMoveLeft) String() string {
 	return "patrollingStateMoveLeft"
 }
 
-type patrollingStateStand struct {
-	ctrl *aiController
+type slasherPatrollingStateStand struct {
+	ctrl *aiEnemySlasherController
 }
 
-func (s *patrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherPatrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character) {
 	showAlarmIfNoticedPlayer(s.ctrl, playerCharacter)
 	s.ctrl.time++
 	s.ctrl.character.Move(0)
@@ -64,15 +70,15 @@ func (s *patrollingStateStand) update(_ []*platforms.Platform, playerCharacter *
 	}
 }
 
-func (s *patrollingStateStand) String() string {
+func (s *slasherPatrollingStateStand) String() string {
 	return "patrollingStateStand"
 }
 
-type alarmedState struct {
-	ctrl *aiController
+type slasherAlarmedState struct {
+	ctrl *aiEnemySlasherController
 }
 
-func (s *alarmedState) update(_ []*platforms.Platform, _ *characters.Character) {
+func (s *slasherAlarmedState) update(_ []*platforms.Platform, _ *characters.Character) {
 	s.ctrl.character.Move(0)
 	s.ctrl.character.ShowAlarm()
 	// If finished showing alarm
@@ -81,15 +87,15 @@ func (s *alarmedState) update(_ []*platforms.Platform, _ *characters.Character) 
 	}
 }
 
-func (s *alarmedState) String() string {
+func (s *slasherAlarmedState) String() string {
 	return "alarmedState"
 }
 
-type chasingState struct {
-	ctrl *aiController
+type slasherChasingState struct {
+	ctrl *aiEnemySlasherController
 }
 
-func (s *chasingState) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherChasingState) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
 	c := s.ctrl.character
 	if c.CharacterClose(playerCharacter) {
 		s.ctrl.cooldownTime = constants.AiCooldownTime
@@ -104,7 +110,9 @@ func (s *chasingState) update(platforms []*platforms.Platform, playerCharacter *
 			c.Move(0)
 		}
 	} else {
-		c.Move(0)
+		if c.IsCloseToPlatformRightEdge(platforms) || c.IsCloseToPlatformLeftEdge(platforms) {
+			c.Move(0)
+		}
 		s.ctrl.cooldownTime--
 		if s.ctrl.cooldownTime == 0 {
 			s.ctrl.setState(s.ctrl.patrollingMoveLeft)
@@ -112,26 +120,26 @@ func (s *chasingState) update(platforms []*platforms.Platform, playerCharacter *
 	}
 }
 
-func (s *chasingState) String() string {
+func (s *slasherChasingState) String() string {
 	return "chasingState"
 }
 
-func newAiController(ch *characters.Character) *aiController {
-	ctrl := &aiController{
+func newAiEnemySlasherController(ch *characters.Character) aiEnemyController {
+	ctrl := &aiEnemySlasherController{
 		character: ch,
 		startX:    ch.X,
 		time:      0,
 	}
-	ctrl.patrollingStand = &patrollingStateStand{ctrl}
-	ctrl.patrollingMoveRight = &patrollingStateMoveRight{ctrl}
-	ctrl.patrollingMoveLeft = &patrollingStateMoveLeft{ctrl}
-	ctrl.alarmed = &alarmedState{ctrl}
-	ctrl.chasing = &chasingState{ctrl}
+	ctrl.patrollingStand = &slasherPatrollingStateStand{ctrl}
+	ctrl.patrollingMoveRight = &slasherPatrollingStateMoveRight{ctrl}
+	ctrl.patrollingMoveLeft = &slasherPatrollingStateMoveLeft{ctrl}
+	ctrl.alarmed = &slasherAlarmedState{ctrl}
+	ctrl.chasing = &slasherChasingState{ctrl}
 	ctrl.setState(ctrl.patrollingMoveRight)
 	return ctrl
 }
 
-type aiController struct {
+type aiEnemySlasherController struct {
 	character    *characters.Character
 	startX       int32
 	time         int
@@ -145,11 +153,108 @@ type aiController struct {
 	chasing                patrollingStateInterface
 }
 
-func (ai *aiController) setState(state patrollingStateInterface) {
+func (ai *aiEnemySlasherController) setState(state patrollingStateInterface) {
 	log.Println("switching to state:", state.String())
 	ai.currentPatrollingState = state
 }
 
-func (ai *aiController) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (ai *aiEnemySlasherController) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
 	ai.currentPatrollingState.update(platforms, playerCharacter)
+}
+
+type snakePatrollingStateMoveRight struct {
+	ctrl *aiEnemySnakeController
+}
+
+func (s *snakePatrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+	ch := s.ctrl.character
+	ch.Move(constants.CharacterVX)
+	if ch.X > s.ctrl.startX+(3*constants.TileDestWidth) || ch.IsCloseToPlatformRightEdge(platforms) {
+		s.ctrl.setState(s.ctrl.patrollingStand)
+	}
+}
+
+func (s *snakePatrollingStateMoveRight) String() string {
+	return "patrollingStateMoveRight"
+}
+
+type snakePatrollingStateMoveLeft struct {
+	ctrl *aiEnemySnakeController
+}
+
+func (s *snakePatrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+	ch := s.ctrl.character
+	ch.Move(-constants.CharacterVX)
+	if ch.X < s.ctrl.startX-(3*constants.TileDestWidth) || ch.IsCloseToPlatformLeftEdge(platforms) {
+		s.ctrl.setState(s.ctrl.patrollingStand)
+	}
+}
+
+func (s *snakePatrollingStateMoveLeft) String() string {
+	return "patrollingStateMoveLeft"
+}
+
+type snakePatrollingStateStand struct {
+	ctrl *aiEnemySnakeController
+}
+
+func (s *snakePatrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character) {
+	s.ctrl.time++
+	s.ctrl.character.Move(0)
+	if s.ctrl.time > 100 {
+		s.ctrl.time = 0
+		if s.ctrl.character.IsFacedRight() {
+			s.ctrl.setState(s.ctrl.patrollingMoveLeft)
+		} else {
+			s.ctrl.setState(s.ctrl.patrollingMoveRight)
+		}
+	}
+}
+
+func (s *snakePatrollingStateStand) String() string {
+	return "patrollingStateStand"
+}
+
+func newAiEnemySnakeController(ch *characters.Character) aiEnemyController {
+	ctrl := &aiEnemySnakeController{
+		character: ch,
+		startX:    ch.X,
+		time:      0,
+	}
+	ctrl.patrollingStand = &snakePatrollingStateStand{ctrl}
+	ctrl.patrollingMoveRight = &snakePatrollingStateMoveRight{ctrl}
+	ctrl.patrollingMoveLeft = &snakePatrollingStateMoveLeft{ctrl}
+	ctrl.setState(ctrl.patrollingMoveRight)
+	return ctrl
+}
+
+type aiEnemySnakeController struct {
+	character    *characters.Character
+	startX       int32
+	time         int
+	cooldownTime int
+
+	currentPatrollingState patrollingStateInterface
+	patrollingStand        patrollingStateInterface
+	patrollingMoveRight    patrollingStateInterface
+	patrollingMoveLeft     patrollingStateInterface
+}
+
+func (ai *aiEnemySnakeController) setState(state patrollingStateInterface) {
+	log.Println("switching to state:", state.String())
+	ai.currentPatrollingState = state
+}
+
+func (ai *aiEnemySnakeController) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+	ai.currentPatrollingState.update(platforms, playerCharacter)
+}
+
+func newAiControllerForEnemy(ch *characters.Character) (aiEnemyController, error) {
+	switch {
+	case ch.IsEnemySlasher():
+		return newAiEnemySlasherController(ch), nil
+	case ch.IsEnemySnake():
+		return newAiEnemySnakeController(ch), nil
+	}
+	return nil, errors.New("unknown enemy type")
 }
