@@ -53,13 +53,10 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Character, player *characters.Character) []*characters.Character {
 	result := []*characters.Character{}
 	for _, e := range enemies {
-		e.Update(platforms, append(enemies, player))
-		result = append(result, e)
-		// TODO: Destroy when fell off the screen
-		// if e.X == false {
-		// 	e.update()
-		// 	result = append(result, e)
-		// }
+		if !e.IsDead() {
+			e.Update(platforms, append(enemies, player))
+			result = append(result, e)
+		}
 	}
 	return result
 }
