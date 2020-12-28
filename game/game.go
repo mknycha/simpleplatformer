@@ -107,6 +107,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		for _, e := range g.enemies {
 			e.X--
 		}
+		for _, ctrl := range g.aiControllers {
+			ctrl.shiftPatrollingReferencePointLeft()
+		}
 	}
 	if g.player.IsCloseToLeftScreenEdge() && g.shiftScreenX > 0 {
 		g.player.X += constants.CharacterVX
@@ -116,6 +119,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		}
 		for _, e := range g.enemies {
 			e.X++
+		}
+		for _, ctrl := range g.aiControllers {
+			ctrl.shiftPatrollingReferencePointRight()
 		}
 	}
 	if g.player.X < 0 {

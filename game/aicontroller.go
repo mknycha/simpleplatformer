@@ -16,6 +16,8 @@ type patrollingStateInterface interface {
 type aiEnemyController interface {
 	setState(state patrollingStateInterface)
 	update(platforms []*platforms.Platform, playerCharacter *characters.Character)
+	shiftPatrollingReferencePointRight()
+	shiftPatrollingReferencePointLeft()
 }
 
 type slasherPatrollingStateMoveRight struct {
@@ -162,6 +164,14 @@ func (ai *aiEnemySlasherController) update(platforms []*platforms.Platform, play
 	ai.currentPatrollingState.update(platforms, playerCharacter)
 }
 
+func (ai *aiEnemySlasherController) shiftPatrollingReferencePointRight() {
+	ai.startX++
+}
+
+func (ai *aiEnemySlasherController) shiftPatrollingReferencePointLeft() {
+	ai.startX--
+}
+
 type snakePatrollingStateMoveRight struct {
 	ctrl *aiEnemySnakeController
 }
@@ -247,6 +257,14 @@ func (ai *aiEnemySnakeController) setState(state patrollingStateInterface) {
 
 func (ai *aiEnemySnakeController) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
 	ai.currentPatrollingState.update(platforms, playerCharacter)
+}
+
+func (ai *aiEnemySnakeController) shiftPatrollingReferencePointRight() {
+	ai.startX++
+}
+
+func (ai *aiEnemySnakeController) shiftPatrollingReferencePointLeft() {
+	ai.startX--
 }
 
 func newAiControllerForEnemy(ch *characters.Character) (aiEnemyController, error) {
