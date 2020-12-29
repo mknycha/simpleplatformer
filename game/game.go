@@ -5,6 +5,7 @@ import (
 	"simpleplatformer/common"
 	"simpleplatformer/constants"
 	"simpleplatformer/game/characters"
+	"simpleplatformer/game/ladders"
 	"simpleplatformer/game/platforms"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -15,6 +16,11 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 	tileDestHeight := constants.TileDestHeight
 	player := characters.NewPlayerCharacter(0, 0, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
+	l1, err := ladders.NewLadder(tileDestWidth*12, tileDestHeight*9, tileDestWidth, 4*tileDestHeight, texBackground)
+	if err != nil {
+		log.Fatalf("could not create a ladder: %v", err)
+	}
+	ladders := []*ladders.Ladder{&l1}
 	slasher1 := characters.NewEnemyCharacter(
 		tileDestWidth*12,
 		tileDestHeight*10,
@@ -46,7 +52,7 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 		}
 		aiControllers = append(aiControllers, aiCtrl)
 	}
-	return &Game{player, platforms, enemies, aiControllers, 0}
+	return &Game{player, platforms, ladders, enemies, aiControllers, 0}
 }
 
 // TODO: Move. Can we reuse here logic used for swooshes?
@@ -64,6 +70,7 @@ func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Charac
 type Game struct {
 	player        *characters.Character
 	platforms     []*platforms.Platform
+	ladders       []*ladders.Ladder
 	enemies       []*characters.Character
 	aiControllers []aiEnemyController
 	shiftScreenX  int32
@@ -104,6 +111,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		for _, p := range g.platforms {
 			p.X--
 		}
+		for _, l := range g.ladders {
+			l.X--
+		}
 		for _, e := range g.enemies {
 			e.X--
 		}
@@ -116,6 +126,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		g.shiftScreenX--
 		for _, p := range g.platforms {
 			p.X++
+		}
+		for _, l := range g.ladders {
+			l.X++
 		}
 		for _, e := range g.enemies {
 			e.X++
@@ -139,6 +152,9 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	for _, p := range g.platforms {
 		p.Draw(r)
 	}
+	for _, l := range g.ladders {
+		l.Draw(r)
+	}
 	for _, e := range g.enemies {
 		e.Draw(r)
 	}
@@ -156,11 +172,11 @@ func createPlatforms(texBackground *sdl.Texture) []*platforms.Platform {
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
-	platform2, err := platforms.NewWalkablePlatform(tileDestWidth*2, tileDestHeight*14, tileDestWidth*5, tileDestHeight*5, texBackground)
+	platform2, err := platforms.NewWalkablePlatform(tileDestWidth*2, tileDestHeight*14, tileDestWidth*5, tileDestHeight*6, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
-	platform3, err := platforms.NewWalkablePlatform(tileDestWidth*19, tileDestHeight*14, tileDestWidth*22, tileDestHeight*5, texBackground)
+	platform3, err := platforms.NewWalkablePlatform(tileDestWidth*19, tileDestHeight*14, tileDestWidth*22, tileDestHeight*6, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
