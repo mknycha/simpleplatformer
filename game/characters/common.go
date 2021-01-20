@@ -2,6 +2,7 @@ package characters
 
 import (
 	"simpleplatformer/constants"
+	"simpleplatformer/game/ladders"
 )
 
 func conditionalSwitchToAttackingState(c *Character) {
@@ -41,4 +42,17 @@ func setVelocityAndSwitchFacedRight(c *Character, newVX float32) {
 		c.facedRight = false
 	}
 	c.vx = newVX
+}
+
+func conditionalClimbLadder(c *Character, newVY float32, lads []*ladders.Ladder) {
+	if newVY == 0 {
+		return
+	}
+	for _, l := range lads {
+		if c.isTouchingLadder(l) {
+			c.X = l.X
+			c.vy = newVY
+			c.setState(c.climbing)
+		}
+	}
 }

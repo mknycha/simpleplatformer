@@ -4,6 +4,7 @@ import (
 	"log"
 	"simpleplatformer/common"
 	"simpleplatformer/constants"
+	"simpleplatformer/game/ladders"
 	"simpleplatformer/game/platforms"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -29,10 +30,11 @@ type characterState interface {
 	move(float32)
 	jump()
 	attack()
-	update([]*platforms.Platform)
+	update([]*platforms.Platform, []*ladders.Ladder)
 	hit(float32)
 	kill(float32)
 	showAlarm()
+	climb(float32, []*ladders.Ladder)
 	getAnimationRects() []*sdl.Rect
 }
 
@@ -71,7 +73,11 @@ func (s *standingState) showAlarm() {
 	prepareAndSetShowingAlarmState(s.character)
 }
 
-func (s *standingState) update([]*platforms.Platform) {}
+func (s *standingState) climb(newVY float32, lads []*ladders.Ladder) {
+	conditionalClimbLadder(s.character, newVY, lads)
+}
+
+func (s *standingState) update([]*platforms.Platform, []*ladders.Ladder) {}
 
 func (s *standingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
@@ -108,12 +114,16 @@ func (s *walkingState) showAlarm() {
 	prepareAndSetShowingAlarmState(s.character)
 }
 
-func (s *walkingState) update(platforms []*platforms.Platform) {
+func (s *walkingState) climb(newVY float32, lads []*ladders.Ladder) {
+	conditionalClimbLadder(s.character, newVY, lads)
+}
+
+func (s *walkingState) update(platforms []*platforms.Platform, _ []*ladders.Ladder) {
 	c := s.character
 	c.time++
 	for _, p := range platforms {
 		// If character collides with ANY platform from above
-		if c.isTouchingFromAbove(p) {
+		if c.isTouchingPlatformFromAbove(p) {
 			if c.vx == 0 {
 				c.setState(c.standing)
 			}
@@ -152,7 +162,11 @@ func (s *jumpingState) showAlarm() {
 	prepareAndSetShowingAlarmState(s.character)
 }
 
-func (s *jumpingState) update([]*platforms.Platform) {
+func (s *jumpingState) climb(newVY float32, lads []*ladders.Ladder) {
+	conditionalClimbLadder(s.character, newVY, lads)
+}
+
+func (s *jumpingState) update([]*platforms.Platform, []*ladders.Ladder) {
 	s.character.time = 0
 	s.character.vy += constants.Gravity
 	if s.character.isFalling() {
@@ -187,12 +201,16 @@ func (s *fallingState) kill(newVX float32) {
 
 func (s *fallingState) showAlarm() {}
 
-func (s *fallingState) update(platforms []*platforms.Platform) {
+func (s *fallingState) climb(newVY float32, lads []*ladders.Ladder) {
+	conditionalClimbLadder(s.character, newVY, lads)
+}
+
+func (s *fallingState) update(platforms []*platforms.Platform, _ []*ladders.Ladder) {
 	c := s.character
 	c.time = 0
 	c.vy += constants.Gravity
 	for _, p := range platforms {
-		if c.isTouchingFromAbove(p) {
+		if c.isTouchingPlatformFromAbove(p) {
 			c.Y = p.Y - p.H/2 - c.H
 			c.vy = 0
 			if c.vx == 0 {
@@ -229,7 +247,9 @@ func (s *attackingState) kill(float32) {
 
 func (s *attackingState) showAlarm() {}
 
-func (s *attackingState) update(platforms []*platforms.Platform) {
+func (s *attackingState) climb(newVX float32, lads []*ladders.Ladder) {}
+
+func (s *attackingState) update(platforms []*platforms.Platform, _ []*ladders.Ladder) {
 	c := s.character
 	c.vx = 0
 	c.stamina = 0
@@ -262,7 +282,9 @@ func (s *hitState) kill(float32) {
 
 func (s *hitState) showAlarm() {}
 
-func (s *hitState) update(platforms []*platforms.Platform) {
+func (s *hitState) climb(newVX float32, lads []*ladders.Ladder) {}
+
+func (s *hitState) update(platforms []*platforms.Platform, _ []*ladders.Ladder) {
 	c := s.character
 	if c.health <= 0 {
 		c.setState(c.dead)
@@ -271,7 +293,7 @@ func (s *hitState) update(platforms []*platforms.Platform) {
 	c.time++
 	c.vy += constants.Gravity
 	for _, p := range platforms {
-		if c.isTouchingFromAbove(p) {
+		if c.isTouchingPlatformFromAbove(p) {
 			c.Y = p.Y - p.H/2 - c.H
 			c.vy = 0
 		}
@@ -307,11 +329,13 @@ func (s *showingAlarmState) kill(float32) {
 
 func (s *showingAlarmState) showAlarm() {}
 
-func (s *showingAlarmState) update(platforms []*platforms.Platform) {
+func (s *showingAlarmState) climb(newVX float32, lads []*ladders.Ladder) {}
+
+func (s *showingAlarmState) update(platforms []*platforms.Platform, _ []*ladders.Ladder) {
 	c := s.character
 	c.vy += constants.Gravity
 	for _, p := range platforms {
-		if c.isTouchingFromAbove(p) {
+		if c.isTouchingPlatformFromAbove(p) {
 			c.Y = p.Y - p.H/2 - c.H
 			c.vy = 0
 			c.setState(c.standing)
@@ -320,6 +344,65 @@ func (s *showingAlarmState) update(platforms []*platforms.Platform) {
 }
 
 func (s *showingAlarmState) getAnimationRects() []*sdl.Rect {
+	return s.animationRects
+}
+
+type climbingState struct {
+	character      *Character
+	animationRects []*sdl.Rect
+}
+
+func (s *climbingState) move(float32) {}
+
+func (s *climbingState) jump() {
+	c := s.character
+	c.vy = 0
+	c.setState(c.jumping)
+}
+
+func (s *climbingState) attack() {}
+
+func (s *climbingState) hit(newVX float32) {
+	prepareAndSetHitState(s.character, newVX)
+}
+
+func (s *climbingState) kill(float32) {
+	s.character.setState(s.character.dead)
+}
+
+func (s *climbingState) showAlarm() {}
+
+func (s *climbingState) climb(newVY float32, lads []*ladders.Ladder) {
+	s.character.vy = newVY
+}
+
+func (s *climbingState) update(platforms []*platforms.Platform, ladders []*ladders.Ladder) {
+	c := s.character
+	c.vx = 0
+	c.Y += int32(c.vy)
+	if c.vy == 0 {
+		c.time = 0
+	} else {
+		c.time++
+	}
+	for _, l := range ladders {
+		if c.isTouchingLadder(l) {
+			return
+		}
+	}
+	for _, p := range platforms {
+		if c.isTouchingPlatformFromAbove(p) {
+			c.Y = p.Y - p.H/2 - c.H
+			c.vy = 0
+			c.setState(c.standing)
+			return
+		}
+	}
+	c.vy = 0
+	c.setState(c.falling)
+}
+
+func (s *climbingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
@@ -340,7 +423,9 @@ func (s *deadState) hit(float32) {}
 
 func (s *deadState) showAlarm() {}
 
-func (s *deadState) update(platforms []*platforms.Platform) {
+func (s *deadState) climb(newVX float32, lads []*ladders.Ladder) {}
+
+func (s *deadState) update([]*platforms.Platform, []*ladders.Ladder) {
 	c := s.character
 	c.time++
 	c.vy += constants.Gravity
@@ -383,6 +468,7 @@ type Character struct {
 	hit          characterState
 	dead         characterState
 	falling      characterState
+	climbing     characterState
 	showingAlarm characterState
 }
 
@@ -425,6 +511,12 @@ func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture
 	hitPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{
 		{9, 1},
 		{10, 1},
+	})
+	climbingPlayerRects := newCharacterAnimationRects([]common.RelativeRectPosition{
+		{19, 1},
+		{20, 1},
+		{21, 1},
+		{22, 1},
 	})
 
 	c := Character{
@@ -470,6 +562,10 @@ func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture
 		character:      &c,
 		animationRects: hitPlayerRects,
 	}
+	climbingPlayerState := climbingState{
+		character:      &c,
+		animationRects: climbingPlayerRects,
+	}
 	deadPlayerState := deadState{
 		character:      &c,
 		animationRects: hitPlayerRects,
@@ -480,6 +576,7 @@ func NewPlayerCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture
 	c.falling = &fallingPlayerState
 	c.attacking = &attackingPlayerState
 	c.hit = &hitPlayerState
+	c.climbing = &climbingPlayerState
 	c.dead = &deadPlayerState
 	c.setState(c.falling)
 	return &c
@@ -569,13 +666,13 @@ func NewEnemyCharacter(x, y int32, characterTexture *sdl.Texture, swooshTexture 
 	return &c
 }
 
-func (c *Character) Update(platforms []*platforms.Platform, enemies []*Character) {
+func (c *Character) Update(platforms []*platforms.Platform, ladders []*ladders.Ladder, enemies []*Character) {
 	c.X += int32(c.vx)
 	c.Y += int32(c.vy)
 	if !c.CanAttack() {
 		c.stamina++
 	}
-	c.currentState.update(platforms)
+	c.currentState.update(platforms, ladders)
 	c.updateAttack(enemies)
 }
 
@@ -610,8 +707,14 @@ func (c *Character) resetVX() {
 	c.vx = 0
 }
 
-func (c *Character) isTouchingFromAbove(p *platforms.Platform) bool {
+func (c *Character) isTouchingPlatformFromAbove(p *platforms.Platform) bool {
 	return c.Y+c.H >= p.Y-p.H/2 && c.Y+c.H <= p.Y-p.H/2+5 && c.X >= p.X-p.W/2 && c.X <= p.X+p.W/2
+}
+
+func (c *Character) isTouchingLadder(l *ladders.Ladder) bool {
+	// Additional c.H allows character to get on the platform that's on the same level as top of the ladder
+	// This >= does not allow character to fall down the platform when climbing down the ladder
+	return c.X > l.X-l.W/2 && c.X < l.X+l.W/2 && c.Y >= l.Y-l.H/2-c.H && c.Y+c.H <= l.Y+l.H/2
 }
 
 func (c *Character) isFalling() bool {
@@ -640,7 +743,7 @@ func (c *Character) IsFacedRight() bool {
 
 func (c *Character) IsCloseToPlatformLeftEdge(platforms []*platforms.Platform) bool {
 	for _, p := range platforms {
-		if c.isTouchingFromAbove(p) {
+		if c.isTouchingPlatformFromAbove(p) {
 			return c.X < (p.X - p.W/2 + c.W/2)
 		}
 	}
@@ -649,7 +752,7 @@ func (c *Character) IsCloseToPlatformLeftEdge(platforms []*platforms.Platform) b
 
 func (c *Character) IsCloseToPlatformRightEdge(platforms []*platforms.Platform) bool {
 	for _, p := range platforms {
-		if c.isTouchingFromAbove(p) {
+		if c.isTouchingPlatformFromAbove(p) {
 			return c.X > (p.X + p.W/2 - c.W/2)
 		}
 	}
@@ -726,6 +829,10 @@ func (c *Character) Kill(newVX float32) {
 
 func (c *Character) ShowAlarm() {
 	c.currentState.showAlarm()
+}
+
+func (c *Character) Climb(newVY float32, lads []*ladders.Ladder) {
+	c.currentState.climb(newVY, lads)
 }
 
 func (c *Character) Draw(renderer *sdl.Renderer) {

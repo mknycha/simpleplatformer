@@ -16,7 +16,7 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 	tileDestHeight := constants.TileDestHeight
 	player := characters.NewPlayerCharacter(0, 0, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
-	l1, err := ladders.NewLadder(tileDestWidth*12, tileDestHeight*9, tileDestWidth, 4*tileDestHeight, texBackground)
+	l1, err := ladders.NewLadder(tileDestWidth*4, tileDestHeight*9+tileDestHeight/2, tileDestWidth, tileDestHeight*3, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a ladder: %v", err)
 	}
@@ -56,11 +56,11 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 }
 
 // TODO: Move. Can we reuse here logic used for swooshes?
-func updateEnemies(platforms []*platforms.Platform, enemies []*characters.Character, player *characters.Character) []*characters.Character {
+func updateEnemies(platforms []*platforms.Platform, ladders []*ladders.Ladder, enemies []*characters.Character, player *characters.Character) []*characters.Character {
 	result := []*characters.Character{}
 	for _, e := range enemies {
 		if !e.IsDead() {
-			e.Update(platforms, append(enemies, player))
+			e.Update(platforms, ladders, append(enemies, player))
 			result = append(result, e)
 		}
 	}
@@ -100,8 +100,17 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	if keyState[sdl.SCANCODE_LCTRL] != 0 {
 		g.player.Attack()
 	}
+	if keyState[sdl.SCANCODE_UP] != 0 {
+		g.player.Climb(-1, g.ladders)
+	}
+	if keyState[sdl.SCANCODE_DOWN] != 0 {
+		g.player.Climb(1, g.ladders)
+	}
+	if keyState[sdl.SCANCODE_UP] == 0 && keyState[sdl.SCANCODE_DOWN] == 0 {
+		g.player.Climb(0, g.ladders)
+	}
 
-	g.player.Update(g.platforms, g.enemies)
+	g.player.Update(g.platforms, g.ladders, g.enemies)
 	if g.player.IsDead() {
 		return common.Over, true
 	}
@@ -145,7 +154,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		ctrl.update(g.platforms, g.player)
 	}
 
-	g.enemies = updateEnemies(g.platforms, g.enemies, g.player)
+	g.enemies = updateEnemies(g.platforms, g.ladders, g.enemies, g.player)
 
 	r.Clear()
 
