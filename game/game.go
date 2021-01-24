@@ -65,10 +65,11 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 func updateEnemies(platforms []*platforms.Platform, ladders []*ladders.Ladder, enemies []*characters.Character, player *characters.Character) []*characters.Character {
 	result := []*characters.Character{}
 	for _, e := range enemies {
-		if !e.IsDead() {
-			e.Update(platforms, ladders, append(enemies, player))
-			result = append(result, e)
+		if e.IsDead() && e.IsOffScreen() {
+			continue
 		}
+		e.Update(platforms, ladders, append(enemies, player))
+		result = append(result, e)
 	}
 	return result
 }
@@ -118,7 +119,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	}
 
 	g.player.Update(g.platforms, g.ladders, g.enemies)
-	if g.player.IsDead() {
+	if g.player.Y > constants.WindowHeight+g.shiftScreenY {
 		return common.Over, true
 	}
 	if g.player.IsCloseToRightScreenEdge() {

@@ -726,6 +726,10 @@ func (c *Character) isJumpingUpward() bool {
 }
 
 func (c *Character) IsDead() bool {
+	return c.currentState == c.dead
+}
+
+func (c *Character) IsOffScreen() bool {
 	return c.Y-c.H > constants.WindowHeight
 }
 
