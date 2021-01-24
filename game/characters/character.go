@@ -737,6 +737,14 @@ func (c *Character) IsCloseToLeftScreenEdge() bool {
 	return c.X < (constants.TileDestWidth * 5)
 }
 
+func (c *Character) IsCloseToUpperScreenEdge() bool {
+	return c.Y < (constants.ScreenMarginHeight)
+}
+
+func (c *Character) IsCloseToLowerScreenEdge() bool {
+	return c.Y+(constants.ScreenMarginHeight) > constants.WindowHeight
+}
+
 func (c *Character) IsFacedRight() bool {
 	return c.facedRight
 }

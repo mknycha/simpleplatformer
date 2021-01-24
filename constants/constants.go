@@ -6,6 +6,7 @@ const (
 	Gravity             = 0.05
 	JumpSpeed           = 4
 	CharacterVX         = 1
+	CharacterVY         = 1
 	CharacterStaminaMax = 30
 	SwooshVX            = float32(1.0)
 	SwooshXShift        = 10
@@ -14,6 +15,7 @@ const (
 	HitStateLength      = 70
 	CharacterVYWhenHit  = -2
 	CharacterSightLimit = 8 * CharacterDestWidth
+	ScreenMarginHeight  = 5 * TileDestHeight
 	AiCooldownTime      = 350
 )
 

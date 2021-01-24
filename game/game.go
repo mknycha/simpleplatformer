@@ -14,9 +14,9 @@ import (
 func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *sdl.Texture) *Game {
 	tileDestWidth := constants.TileDestWidth
 	tileDestHeight := constants.TileDestHeight
-	player := characters.NewPlayerCharacter(0, 0, texCharacters, texSwoosh)
+	player := characters.NewPlayerCharacter(0, tileDestHeight*7, texCharacters, texSwoosh)
 	platforms := createPlatforms(texBackground)
-	l1, err := ladders.NewLadder(tileDestWidth*4, tileDestHeight*9+tileDestHeight/2, tileDestWidth, tileDestHeight*3, texBackground)
+	l1, err := ladders.NewLadder(tileDestWidth*4, tileDestHeight*4+tileDestHeight/2, tileDestWidth, tileDestHeight*13, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a ladder: %v", err)
 	}
@@ -52,7 +52,13 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 		}
 		aiControllers = append(aiControllers, aiCtrl)
 	}
-	return &Game{player, platforms, ladders, enemies, aiControllers, 0}
+	return &Game{
+		player:        player,
+		platforms:     platforms,
+		ladders:       ladders,
+		enemies:       enemies,
+		aiControllers: aiControllers,
+	}
 }
 
 // TODO: Move. Can we reuse here logic used for swooshes?
@@ -74,6 +80,7 @@ type Game struct {
 	enemies       []*characters.Character
 	aiControllers []aiEnemyController
 	shiftScreenX  int32
+	shiftScreenY  int32
 }
 
 func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool) {
@@ -101,10 +108,10 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 		g.player.Attack()
 	}
 	if keyState[sdl.SCANCODE_UP] != 0 {
-		g.player.Climb(-1, g.ladders)
+		g.player.Climb(-constants.CharacterVY, g.ladders)
 	}
 	if keyState[sdl.SCANCODE_DOWN] != 0 {
-		g.player.Climb(1, g.ladders)
+		g.player.Climb(constants.CharacterVY, g.ladders)
 	}
 	if keyState[sdl.SCANCODE_UP] == 0 && keyState[sdl.SCANCODE_DOWN] == 0 {
 		g.player.Climb(0, g.ladders)
@@ -146,6 +153,34 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 			ctrl.shiftPatrollingReferencePointRight()
 		}
 	}
+	if g.player.IsCloseToLowerScreenEdge() && g.shiftScreenY > 0 {
+		diff := g.player.Y + constants.ScreenMarginHeight - constants.WindowHeight
+		g.player.Y -= diff
+		g.shiftScreenY -= diff
+		for _, p := range g.platforms {
+			p.Y -= diff
+		}
+		for _, l := range g.ladders {
+			l.Y -= diff
+		}
+		for _, e := range g.enemies {
+			e.Y -= diff
+		}
+	}
+	if g.player.IsCloseToUpperScreenEdge() {
+		diff := constants.ScreenMarginHeight - g.player.Y
+		g.player.Y += diff
+		g.shiftScreenY += diff
+		for _, p := range g.platforms {
+			p.Y += diff
+		}
+		for _, l := range g.ladders {
+			l.Y += diff
+		}
+		for _, e := range g.enemies {
+			e.Y += diff
+		}
+	}
 	if g.player.X < 0 {
 		g.player.X = 0
 	}
@@ -177,7 +212,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 func createPlatforms(texBackground *sdl.Texture) []*platforms.Platform {
 	tileDestWidth := constants.TileDestWidth
 	tileDestHeight := constants.TileDestHeight
-	platform1, err := platforms.NewWalkablePlatform(tileDestWidth*6, tileDestHeight*12, tileDestWidth*5, tileDestHeight*8, texBackground)
+	platform1, err := platforms.NewWalkablePlatform(tileDestWidth*6, tileDestHeight*8, tileDestWidth*5, tileDestHeight*20, texBackground)
 	if err != nil {
 		log.Fatalf("could not create a platform: %v", err)
 	}
