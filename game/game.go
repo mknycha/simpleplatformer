@@ -29,7 +29,7 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 	)
 	slasher2 := characters.NewEnemyCharacter(
 		tileDestWidth*6,
-		tileDestHeight*6,
+		tileDestHeight*-3,
 		texCharacters,
 		texSwoosh,
 	)

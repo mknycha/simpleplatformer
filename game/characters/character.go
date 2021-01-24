@@ -36,6 +36,7 @@ type characterState interface {
 	showAlarm()
 	climb(float32, []*ladders.Ladder)
 	getAnimationRects() []*sdl.Rect
+	String() string
 }
 
 type standingState struct {
@@ -81,6 +82,10 @@ func (s *standingState) update([]*platforms.Platform, []*ladders.Ladder) {}
 
 func (s *standingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
+}
+
+func (s *standingState) String() string {
+	return "standingState"
 }
 
 type walkingState struct {
@@ -137,6 +142,10 @@ func (s *walkingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+func (s *walkingState) String() string {
+	return "walkingState"
+}
+
 type jumpingState struct {
 	character      *Character
 	animationRects []*sdl.Rect
@@ -178,6 +187,10 @@ func (s *jumpingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+func (s *jumpingState) String() string {
+	return "jumpingState"
+}
+
 type fallingState struct {
 	character      *Character
 	animationRects []*sdl.Rect
@@ -208,7 +221,9 @@ func (s *fallingState) climb(newVY float32, lads []*ladders.Ladder) {
 func (s *fallingState) update(platforms []*platforms.Platform, _ []*ladders.Ladder) {
 	c := s.character
 	c.time = 0
-	c.vy += constants.Gravity
+	if c.vy < constants.CharacterVYMax {
+		c.vy += constants.Gravity
+	}
 	for _, p := range platforms {
 		if c.isTouchingPlatformFromAbove(p) {
 			c.Y = p.Y - p.H/2 - c.H
@@ -224,6 +239,10 @@ func (s *fallingState) update(platforms []*platforms.Platform, _ []*ladders.Ladd
 
 func (s *fallingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
+}
+
+func (s *fallingState) String() string {
+	return "fallingState"
 }
 
 type attackingState struct {
@@ -261,6 +280,10 @@ func (s *attackingState) update(platforms []*platforms.Platform, _ []*ladders.La
 
 func (s *attackingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
+}
+
+func (s *attackingState) String() string {
+	return "attackingState"
 }
 
 type hitState struct {
@@ -308,6 +331,10 @@ func (s *hitState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+func (s *hitState) String() string {
+	return "hitState"
+}
+
 type showingAlarmState struct {
 	character      *Character
 	animationRects []*sdl.Rect
@@ -345,6 +372,10 @@ func (s *showingAlarmState) update(platforms []*platforms.Platform, _ []*ladders
 
 func (s *showingAlarmState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
+}
+
+func (s *showingAlarmState) String() string {
+	return "showingAlarmState"
 }
 
 type climbingState struct {
@@ -406,6 +437,10 @@ func (s *climbingState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
 }
 
+func (s *climbingState) String() string {
+	return "climbingState"
+}
+
 type deadState struct {
 	character      *Character
 	animationRects []*sdl.Rect
@@ -433,6 +468,10 @@ func (s *deadState) update([]*platforms.Platform, []*ladders.Ladder) {
 
 func (s *deadState) getAnimationRects() []*sdl.Rect {
 	return s.animationRects
+}
+
+func (s *deadState) String() string {
+	return "deadState"
 }
 
 type characterType int
