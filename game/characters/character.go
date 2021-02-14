@@ -835,10 +835,10 @@ func (c *Character) OnSameHeight(otherCharacter *Character) bool {
 // CharacterWithinAttackRange returns true if the other character is in range of the potential attack
 func (c *Character) CharacterWithinAttackRange(otherCharacter *Character) bool {
 	distance := otherCharacter.X - c.X
-	if distance > 0 && distance < constants.CharacterDestWidth {
+	if distance > 0 && distance < constants.CharacterDestWidth/2 {
 		return true
 	}
-	if distance < 0 && distance > -constants.CharacterDestWidth {
+	if distance < 0 && distance > -constants.CharacterDestWidth/2 {
 		return true
 	}
 	return false

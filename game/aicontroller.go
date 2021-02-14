@@ -9,13 +9,13 @@ import (
 )
 
 type patrollingStateInterface interface {
-	update([]*platforms.Platform, *characters.Character)
+	update([]*platforms.Platform, *characters.Character, []*characters.Character)
 	String() string // useful for debugging state
 }
 
 type aiEnemyController interface {
 	setState(state patrollingStateInterface)
-	update(platforms []*platforms.Platform, playerCharacter *characters.Character)
+	update([]*platforms.Platform, *characters.Character, []*characters.Character)
 	shiftPatrollingReferencePointRight()
 	shiftPatrollingReferencePointLeft()
 }
@@ -24,7 +24,7 @@ type slasherPatrollingStateMoveRight struct {
 	ctrl *aiEnemySlasherController
 }
 
-func (s *slasherPatrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherPatrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character, _ []*characters.Character) {
 	showAlarmIfNoticedPlayer(s.ctrl, playerCharacter)
 	ch := s.ctrl.character
 	ch.Move(constants.CharacterVX)
@@ -41,7 +41,7 @@ type slasherPatrollingStateMoveLeft struct {
 	ctrl *aiEnemySlasherController
 }
 
-func (s *slasherPatrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherPatrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character, _ []*characters.Character) {
 	showAlarmIfNoticedPlayer(s.ctrl, playerCharacter)
 	ch := s.ctrl.character
 	ch.Move(-constants.CharacterVX)
@@ -58,7 +58,7 @@ type slasherPatrollingStateStand struct {
 	ctrl *aiEnemySlasherController
 }
 
-func (s *slasherPatrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherPatrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character, _ []*characters.Character) {
 	showAlarmIfNoticedPlayer(s.ctrl, playerCharacter)
 	s.ctrl.time++
 	s.ctrl.character.Move(0)
@@ -80,7 +80,7 @@ type slasherAlarmedState struct {
 	ctrl *aiEnemySlasherController
 }
 
-func (s *slasherAlarmedState) update(_ []*platforms.Platform, _ *characters.Character) {
+func (s *slasherAlarmedState) update(_ []*platforms.Platform, _ *characters.Character, _ []*characters.Character) {
 	s.ctrl.character.Move(0)
 	s.ctrl.character.ShowAlarm()
 	// If finished showing alarm
@@ -97,22 +97,32 @@ type slasherChasingState struct {
 	ctrl *aiEnemySlasherController
 }
 
-func (s *slasherChasingState) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *slasherChasingState) update(platforms []*platforms.Platform, playerCharacter *characters.Character, enemies []*characters.Character) {
 	c := s.ctrl.character
+	otherEnemyWithinAttackRange := false
+	for _, e := range enemies {
+		if e == c {
+			continue
+		}
+		if c.CharacterWithinSight(e) && c.CharacterWithinAttackRange(e) {
+			otherEnemyWithinAttackRange = true
+			break
+		}
+	}
 	if c.CharacterClose(playerCharacter) {
 		s.ctrl.cooldownTime = constants.AiCooldownTime
 		if c.CharacterWithinAttackRange(playerCharacter) {
 			c.Attack()
 		}
-		if playerCharacter.X-constants.CharacterDestWidth/2 > c.X && !c.IsCloseToPlatformRightEdge(platforms) {
+		if playerCharacter.X-constants.CharacterDestWidth/2 > c.X && !otherEnemyWithinAttackRange && !c.IsCloseToPlatformRightEdge(platforms) {
 			c.Move(constants.CharacterVX)
-		} else if playerCharacter.X+constants.CharacterDestWidth/2 < c.X && !c.IsCloseToPlatformLeftEdge(platforms) {
+		} else if playerCharacter.X+constants.CharacterDestWidth/2 < c.X && !otherEnemyWithinAttackRange && !c.IsCloseToPlatformLeftEdge(platforms) {
 			c.Move(-constants.CharacterVX)
 		} else {
 			c.Move(0)
 		}
 	} else {
-		if c.IsCloseToPlatformRightEdge(platforms) || c.IsCloseToPlatformLeftEdge(platforms) {
+		if c.IsCloseToPlatformRightEdge(platforms) || c.IsCloseToPlatformLeftEdge(platforms) || otherEnemyWithinAttackRange {
 			c.Move(0)
 		}
 		s.ctrl.cooldownTime--
@@ -160,8 +170,8 @@ func (ai *aiEnemySlasherController) setState(state patrollingStateInterface) {
 	ai.currentPatrollingState = state
 }
 
-func (ai *aiEnemySlasherController) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
-	ai.currentPatrollingState.update(platforms, playerCharacter)
+func (ai *aiEnemySlasherController) update(platforms []*platforms.Platform, playerCharacter *characters.Character, enemies []*characters.Character) {
+	ai.currentPatrollingState.update(platforms, playerCharacter, enemies)
 }
 
 func (ai *aiEnemySlasherController) shiftPatrollingReferencePointRight() {
@@ -176,7 +186,7 @@ type snakePatrollingStateMoveRight struct {
 	ctrl *aiEnemySnakeController
 }
 
-func (s *snakePatrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *snakePatrollingStateMoveRight) update(platforms []*platforms.Platform, playerCharacter *characters.Character, _ []*characters.Character) {
 	ch := s.ctrl.character
 	ch.Move(constants.CharacterVX)
 	if ch.X > s.ctrl.startX+(3*constants.TileDestWidth) || ch.IsCloseToPlatformRightEdge(platforms) {
@@ -192,7 +202,7 @@ type snakePatrollingStateMoveLeft struct {
 	ctrl *aiEnemySnakeController
 }
 
-func (s *snakePatrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *snakePatrollingStateMoveLeft) update(platforms []*platforms.Platform, playerCharacter *characters.Character, _ []*characters.Character) {
 	ch := s.ctrl.character
 	ch.Move(-constants.CharacterVX)
 	if ch.X < s.ctrl.startX-(3*constants.TileDestWidth) || ch.IsCloseToPlatformLeftEdge(platforms) {
@@ -208,7 +218,7 @@ type snakePatrollingStateStand struct {
 	ctrl *aiEnemySnakeController
 }
 
-func (s *snakePatrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character) {
+func (s *snakePatrollingStateStand) update(_ []*platforms.Platform, playerCharacter *characters.Character, _ []*characters.Character) {
 	s.ctrl.time++
 	s.ctrl.character.Move(0)
 	if s.ctrl.time > 100 {
@@ -255,8 +265,8 @@ func (ai *aiEnemySnakeController) setState(state patrollingStateInterface) {
 	ai.currentPatrollingState = state
 }
 
-func (ai *aiEnemySnakeController) update(platforms []*platforms.Platform, playerCharacter *characters.Character) {
-	ai.currentPatrollingState.update(platforms, playerCharacter)
+func (ai *aiEnemySnakeController) update(platforms []*platforms.Platform, playerCharacter *characters.Character, enemies []*characters.Character) {
+	ai.currentPatrollingState.update(platforms, playerCharacter, enemies)
 }
 
 func (ai *aiEnemySnakeController) shiftPatrollingReferencePointRight() {

@@ -28,6 +28,12 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 		texSwoosh,
 	)
 	slasher2 := characters.NewEnemyCharacter(
+		tileDestWidth*10,
+		tileDestHeight*10,
+		texCharacters,
+		texSwoosh,
+	)
+	slasher3 := characters.NewEnemyCharacter(
 		tileDestWidth*6,
 		tileDestHeight*-3,
 		texCharacters,
@@ -43,7 +49,7 @@ func NewGame(texCharacters *sdl.Texture, texBackground *sdl.Texture, texSwoosh *
 		tileDestHeight*10,
 		texCharacters,
 	)
-	enemies := []*characters.Character{slasher1, slasher2, snake1, snake2}
+	enemies := []*characters.Character{slasher1, slasher2, slasher3, snake1, snake2}
 	aiControllers := []aiEnemyController{}
 	for _, e := range enemies {
 		aiCtrl, err := newAiControllerForEnemy(e)
@@ -187,7 +193,7 @@ func (g *Game) Run(r *sdl.Renderer, keyState []uint8) (common.GeneralState, bool
 	}
 
 	for _, ctrl := range g.aiControllers {
-		ctrl.update(g.platforms, g.player)
+		ctrl.update(g.platforms, g.player, g.enemies)
 	}
 
 	g.enemies = updateEnemies(g.platforms, g.ladders, g.enemies, g.player)
